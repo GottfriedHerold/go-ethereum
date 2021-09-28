@@ -72,3 +72,10 @@ func (z *bsFieldElement_8) Format(s fmt.State, ch rune) {
 	var xInt *big.Int = big.NewInt(0).SetBytes(z.v[:])
 	xInt.Format(s, ch)
 }
+
+// multiplicative inverse
+func (z *bsFieldElement_8) inv(x *bsFieldElement_8) {
+	var xInt *big.Int = new(big.Int).SetBytes(x.v[:])
+	xInt.ModInverse(xInt, BaseFieldSize)
+	xInt.FillBytes(z.v[:])
+}
