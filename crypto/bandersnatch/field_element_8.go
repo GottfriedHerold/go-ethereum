@@ -18,7 +18,7 @@ var bsFieldElement_8_zero bsFieldElement_8
 
 var bsFieldElement_8_one bsFieldElement_8 = bsFieldElement_8{v: [32]byte{31: 1}}
 
-func (z *bsFieldElement_8) add(x, y *bsFieldElement_8) {
+func (z *bsFieldElement_8) Add(x, y *bsFieldElement_8) {
 	var xInt *big.Int = big.NewInt(0).SetBytes(x.v[:])
 	var yInt *big.Int = big.NewInt(0).SetBytes(y.v[:])
 	xInt.Add(xInt, yInt)
@@ -26,7 +26,7 @@ func (z *bsFieldElement_8) add(x, y *bsFieldElement_8) {
 	xInt.FillBytes(z.v[:])
 }
 
-func (z *bsFieldElement_8) sub(x, y *bsFieldElement_8) {
+func (z *bsFieldElement_8) Sub(x, y *bsFieldElement_8) {
 	var xInt *big.Int = big.NewInt(0).SetBytes(x.v[:])
 	var yInt *big.Int = big.NewInt(0).SetBytes(y.v[:])
 	xInt.Sub(xInt, yInt)
@@ -34,15 +34,23 @@ func (z *bsFieldElement_8) sub(x, y *bsFieldElement_8) {
 	xInt.FillBytes(z.v[:])
 }
 
-func (z *bsFieldElement_8) isZero() bool {
+func (z *bsFieldElement_8) IsZero() bool {
 	return z.v == bsFieldElement_8_zero.v
 }
 
-func (z *bsFieldElement_8) isOne() bool {
+func (z *bsFieldElement_8) IsOne() bool {
 	return z.v == bsFieldElement_8_one.v
 }
 
-func (z *bsFieldElement_8) mul(x, y *bsFieldElement_8) {
+func (z *bsFieldElement_8) SetOne() {
+	z.v = bsFieldElement_8_one.v
+}
+
+func (z *bsFieldElement_8) SetZero() {
+	z.v = bsFieldElement_8_zero.v
+}
+
+func (z *bsFieldElement_8) Mul(x, y *bsFieldElement_8) {
 	var xInt *big.Int = big.NewInt(0).SetBytes(x.v[:])
 	var yInt *big.Int = big.NewInt(0).SetBytes(y.v[:])
 	xInt.Mul(xInt, yInt)
@@ -50,12 +58,12 @@ func (z *bsFieldElement_8) mul(x, y *bsFieldElement_8) {
 	xInt.FillBytes(z.v[:])
 }
 
-func (z *bsFieldElement_8) toInt() *big.Int {
+func (z *bsFieldElement_8) ToInt() *big.Int {
 	var xInt *big.Int = big.NewInt(0).SetBytes(z.v[:])
 	return xInt
 }
 
-func (z *bsFieldElement_8) setInt(v *big.Int) {
+func (z *bsFieldElement_8) SetInt(v *big.Int) {
 	var xInt *big.Int = big.NewInt(0)
 	xInt.Mod(v, BaseFieldSize)
 	xInt.FillBytes(z.v[:])
@@ -74,8 +82,18 @@ func (z *bsFieldElement_8) Format(s fmt.State, ch rune) {
 }
 
 // multiplicative inverse
-func (z *bsFieldElement_8) inv(x *bsFieldElement_8) {
+func (z *bsFieldElement_8) Inv(x *bsFieldElement_8) {
 	var xInt *big.Int = new(big.Int).SetBytes(x.v[:])
 	xInt.ModInverse(xInt, BaseFieldSize)
 	xInt.FillBytes(z.v[:])
+}
+
+// Changes to a unique internal representation
+func (z *bsFieldElement_8) Normalize() {
+	// no-op
+}
+
+// Comparison
+func (z *bsFieldElement_8) Compare(x *bsFieldElement_8) bool {
+	return *z == *x
 }

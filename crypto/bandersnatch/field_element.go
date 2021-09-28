@@ -49,7 +49,7 @@ const BaseFieldBitLength = 255
 
 // number of bytes of BaseFieldSize == number of bytes needed to store individual field elements.
 // We might actually use more bytes
-const BaseFieldByteLength = 32
+const BaseFieldByteLength = (BaseFieldBitLength + 1) / 8
 
 // Modulus of the Base field as a big-endian byte array (big.Int is easier with big-endian)
 var BaseFieldSize_BigEndianBytes [BaseFieldByteLength]byte = func() (ret [BaseFieldByteLength]byte) {
@@ -69,3 +69,28 @@ var BaseFieldSize *big.Int = big.NewInt(0).SetBytes(BaseFieldSize_BigEndianBytes
 	Notes: Internal representations are not guaranteed to be stable, may contain pointers or non-unique representations.
 	In particular, neither assigment nor comparison operators are guaranteed to work as expected.
 */
+
+/*
+	This is the intended interface of Field Elements.
+	Of course, this cannot be made an actual interface without possibly sacrificing efficiency
+	since Go lacks generics:
+	(The arguments to Mul etc. in the interface and the concret type need to match, so
+	so the actual types' Mul(), Add() etc. implementation would need to accept an
+	interface type and	start by making a type assertion.)
+type BSFieldElement_Interface interface {
+	IsZero() bool
+	IsOne() bool
+	SetOne()
+	SetZero()
+	Mul(x, y *BSFieldElement_Interface)
+	Add(x, y *BSFieldElement_Interface)
+	Sub(x, y *BSFieldElement_Interface)
+	Inv(x *BSFieldElement_Interface)
+	SetInt(x *big.Int)
+	ToInt() *big.Int
+	Normalize()
+	Compare(other *BSFieldElement_Interface)
+}
+*/
+
+type BSFieldElement = bsFieldElement_64

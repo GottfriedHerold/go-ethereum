@@ -52,7 +52,7 @@ func (z *bsFieldElement_64) maybe_reduce_once() {
 }
 
 // Change the internal representation to a unique number in 0 <= . < BaseFieldSize
-func (z *bsFieldElement_64) normalize() {
+func (z *bsFieldElement_64) Normalize() {
 	// Workaround for Go's lack of constexpr. Hoping for smart-ish compiler.
 	var base_field_temp [4]uint64 = [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}
 	for i := 3; i >= 0; i-- {
@@ -66,11 +66,14 @@ func (z *bsFieldElement_64) normalize() {
 	z.words[0], borrow = bits.Sub64(z.words[0], m_64_0, 0)
 	z.words[1], borrow = bits.Sub64(z.words[1], m_64_1, borrow)
 	z.words[2], borrow = bits.Sub64(z.words[2], m_64_2, borrow)
-	z.words[3], _ = bits.Sub64(z.words[3], m_64_3, borrow)
+	z.words[3], borrow = bits.Sub64(z.words[3], m_64_3, borrow)
+	if borrow != 0 {
+		panic("Underflow in normalization. This should never happen.")
+	}
 }
 
 // Add x + y and store the result in z
-func (z *bsFieldElement_64) add(x, y *bsFieldElement_64) {
+func (z *bsFieldElement_64) Add(x, y *bsFieldElement_64) {
 	var carry uint64
 	z.words[0], carry = bits.Add64(x.words[0], y.words[0], 0)
 	z.words[1], carry = bits.Add64(x.words[1], y.words[1], carry)
@@ -90,7 +93,7 @@ func (z *bsFieldElement_64) add(x, y *bsFieldElement_64) {
 }
 
 // Subtract x - y and store the result in z
-func (z *bsFieldElement_64) sub(x, y *bsFieldElement_64) {
+func (z *bsFieldElement_64) Sub(x, y *bsFieldElement_64) {
 	var borrow uint64 // only takes values 0,1
 	z.words[0], borrow = bits.Sub64(x.words[0], y.words[0], 0)
 	z.words[1], borrow = bits.Sub64(x.words[1], y.words[1], borrow)
@@ -164,30 +167,30 @@ func add_mul_shift_64(target *[4]uint64, x *[4]uint64, y uint64) (low uint64) {
 
 // This function computes t+= (q*BaseFieldSize)/2^64 + 1, assuming no overflow.
 func montgomery_step_64(t *[4]uint64, q uint64) {
-	var low, high, carry uint64
+	var low, high, carry1, carry2 uint64
 
 	high, _ = bits.Mul64(q, m_64_0)
-	t[0], carry = bits.Add64(t[0], high, 1)
+	t[0], carry1 = bits.Add64(t[0], high, 1) // After this, carry1 needs to go in t[1]
 
 	high, low = bits.Mul64(q, m_64_1)
-	t[0], carry = bits.Add64(t[0], low, carry)
-	t[1], carry = bits.Add64(t[1], high, carry)
+	t[0], carry2 = bits.Add64(t[0], low, 0)       // After this, carry2 needs to go in t[1]
+	t[1], carry2 = bits.Add64(t[1], high, carry2) // After this, carry2 needs to go in t[2]
 
 	high, low = bits.Mul64(q, m_64_2)
-	t[1], carry = bits.Add64(t[1], low, carry)
-	t[2], carry = bits.Add64(t[2], high, carry)
+	t[1], carry1 = bits.Add64(t[1], low, carry1)  // After this, carry1 needs to go in t[2]
+	t[2], carry1 = bits.Add64(t[2], high, carry1) // After this, carry1 needs to go in t[3]
 
 	high, low = bits.Mul64(q, m_64_3)
-	t[2], carry = bits.Add64(t[2], low, carry)
-	t[3], carry = bits.Add64(t[3], high, carry)
+	t[2], carry2 = bits.Add64(t[2], low, carry2) // After this, carry2 needs to go in t[3]
+	t[3], carry1 = bits.Add64(t[3], high+carry1, carry2)
 
-	if carry != 0 {
+	if carry1 != 0 {
 		panic("Overflow in montgomery step")
 	}
 
 }
 
-func (z *bsFieldElement_64) mul(x, y *bsFieldElement_64) {
+func (z *bsFieldElement_64) Mul(x, y *bsFieldElement_64) {
 
 	/*
 		We perform Montgomery multiplication, i.e. we need to find x*y / r^4 bmod BaseFieldSize with r==2^64
@@ -253,32 +256,72 @@ func (z *bsFieldElement_64) mul(x, y *bsFieldElement_64) {
 	z.maybe_reduce_once()
 }
 
-func (z *bsFieldElement_64) isZero() bool {
+func (z *bsFieldElement_64) IsZero() bool {
 	return (z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0) || (*z == bsFieldElement_64_zero_alt)
 }
 
-func (z *bsFieldElement_64) isOne() bool {
+func (z *bsFieldElement_64) IsOne() bool {
 	return *z == bsFieldElement_64_one
 }
 
-func (z *bsFieldElement_64) toInt() *big.Int {
+func (z *bsFieldElement_64) SetOne() {
+	z.words = bsFieldElement_64_one.words
+}
 
-	// This represents 1/2^256 in Montgomery form
-	temp := bsFieldElement_64{words: [4]uint64{1, 0, 0, 0}}
+func (z *bsFieldElement_64) SetZero() {
+	z.words = bsFieldElement_64_zero.words
+}
 
-	// temp.words is now NOT in Montgomery form. This can be done more efficiently if needed.
-	temp.mul(&temp, z)
-	temp.normalize()
-
+// converts a low-endian 4xuint64 array to Int, without any Montgomery conversions
+func uintarrayToInt(z *[4]uint64) *big.Int {
 	var big_endian_byte_slice [32]byte
-	binary.BigEndian.PutUint64(big_endian_byte_slice[0:8], temp.words[3])
-	binary.BigEndian.PutUint64(big_endian_byte_slice[8:16], temp.words[2])
-	binary.BigEndian.PutUint64(big_endian_byte_slice[16:24], temp.words[1])
-	binary.BigEndian.PutUint64(big_endian_byte_slice[24:32], temp.words[0])
+	binary.BigEndian.PutUint64(big_endian_byte_slice[0:8], z[3])
+	binary.BigEndian.PutUint64(big_endian_byte_slice[8:16], z[2])
+	binary.BigEndian.PutUint64(big_endian_byte_slice[16:24], z[1])
+	binary.BigEndian.PutUint64(big_endian_byte_slice[24:32], z[0])
 	return new(big.Int).SetBytes(big_endian_byte_slice[:])
 }
 
-func (z *bsFieldElement_64) setInt(v *big.Int) {
+// converts a big.Int to a low-endian [4]uint64 array without Montgomery conversions.
+// We assume 0 <= x < 2^256
+func intTouintarray(x *big.Int) (result [4]uint64) {
+	// As this is an internal function, panic is OK for error handling.
+	if x.Sign() < 0 {
+		panic("Trying to convert negative big Int")
+	}
+	if x.BitLen() > 256 {
+		panic("big Int too large to fit.")
+	}
+	var big_endian_byte_slice [32]byte
+	x.FillBytes(big_endian_byte_slice[:])
+	result[0] = binary.BigEndian.Uint64(big_endian_byte_slice[24:32])
+	result[1] = binary.BigEndian.Uint64(big_endian_byte_slice[16:24])
+	result[2] = binary.BigEndian.Uint64(big_endian_byte_slice[8:16])
+	result[3] = binary.BigEndian.Uint64(big_endian_byte_slice[0:8])
+	return
+}
+
+func (z *bsFieldElement_64) ToInt() *big.Int {
+
+	// This represents 1/2^256 in Montgomery form
+	// temp := bsFieldElement_64{words: [4]uint64{1, 0, 0, 0}}
+
+	// temp.words is now NOT in Montgomery form. This can be done more efficiently if needed.
+	// temp.Mul(&temp, z)
+	// temp.Normalize()
+
+	t := uintarrayToInt(&z.words)
+
+	var converter *big.Int = big.NewInt(1)
+	converter.Lsh(converter, 256)
+	converter.ModInverse(converter, BaseFieldSize)
+	t.Mul(t, converter)
+	t.Mod(t, BaseFieldSize)
+
+	return t
+}
+
+func (z *bsFieldElement_64) SetInt(v *big.Int) {
 	sign := v.Sign()
 	w := new(big.Int).Set(v)
 	w.Abs(w)
@@ -289,12 +332,7 @@ func (z *bsFieldElement_64) setInt(v *big.Int) {
 	if sign < 0 {
 		w.Sub(BaseFieldSize, w)
 	}
-	var big_endian_byte_slice [32]byte
-	w.FillBytes(big_endian_byte_slice[:])
-	z.words[0] = binary.BigEndian.Uint64(big_endian_byte_slice[24:32])
-	z.words[1] = binary.BigEndian.Uint64(big_endian_byte_slice[16:24])
-	z.words[2] = binary.BigEndian.Uint64(big_endian_byte_slice[8:16])
-	z.words[3] = binary.BigEndian.Uint64(big_endian_byte_slice[0:8])
+	z.words = intTouintarray(w)
 }
 
 // Generate uniformly random number. Note that this is not crypto-grade randomness. Testing only.
@@ -303,5 +341,43 @@ func (z *bsFieldElement_64) setRandomUnsafe(rnd *rand.Rand) {
 
 	// Not the most efficient way, but for testing purposes we want the _64 and _8 variants to have the same output for given rnd
 	var xInt *big.Int = new(big.Int).Rand(rnd, BaseFieldSize)
-	z.setInt(xInt)
+	z.SetInt(xInt)
+}
+
+// Multiplicative Inverse
+func (z *bsFieldElement_64) Inv(x *bsFieldElement_64) {
+
+	// Slow, but rarely used anyway (due to working in projective coordinates)
+	t := x.ToInt()
+	t.ModInverse(t, BaseFieldSize)
+	z.SetInt(t)
+}
+
+// Checks whether z == x (mod BaseFieldSize)
+func (z *bsFieldElement_64) Compare(x *bsFieldElement_64) bool {
+	// There are at most 2 possible representations per field element and they differ by exactly BaseFieldSize.
+	// So it is enough to reduce the larger one, provided it is much larger.
+	switch {
+	case z.words[3] == x.words[3]:
+		return *z == *x
+	case z.words[3] > x.words[3]:
+		// Note that RHS cannot overflow due to invariant
+		if z.words[3] > x.words[3]+(m_64_3-1) {
+			z.Normalize()
+			return *z == *x
+		} else {
+			return false
+		}
+	case z.words[3] < x.words[3]:
+		// Note that RHS cannot overflow due to invariant
+		if x.words[3] > z.words[3]+(m_64_3-1) {
+			x.Normalize()
+			return *z == *x
+		} else {
+			return false
+		}
+	// needed to make golang not complain about missing return in all branches.
+	default:
+		panic("This cannot happen")
+	}
 }
