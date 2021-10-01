@@ -22,7 +22,7 @@ func TestInit_64(t *testing.T) {
 	if !y.IsZero() {
 		t.Error("IsZero false after SetZero")
 	}
-	if !x.Compare(&y) {
+	if !x.IsEqual(&y) {
 		t.Error("Zeroes do not compare equal")
 	}
 	var drng *rand.Rand = rand.New(rand.NewSource(12431254))
@@ -49,6 +49,9 @@ func TestInit_64(t *testing.T) {
 			t.Error("x/x != 1")
 			break
 		}
+	}
+	if !bsFieldElement_64_one.IsOne() {
+		t.Fatalf("1 is not 1")
 	}
 }
 
@@ -112,35 +115,32 @@ func TestOps_8_vs_64(t *testing.T) {
 
 }
 
-/*
-func TestAssign(t *testing.T) {
+func TestAssign_64(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(123523))
-	var x, y, z bsFieldElement_8
+	var x, y, z bsFieldElement_64
 	x.setRandomUnsafe(drng)
 	y.SetOne()
 	z = x
 	z.Add(&x, &y)
-	if z.Compare(&x) {
+	if z.IsEqual(&x) {
 		t.Fatal("Assignment seems shallow")
 	}
 
 }
-*/
 
-/*
-func TestOpsOnRandomValues(t *testing.T) {
-	var drng *rand.Rand = rand.New(rand.NewSource(123523))
+func TestOpsOnRandomValues_64(t *testing.T) {
+	var drng *rand.Rand = rand.New(rand.NewSource(555))
 	const iterations = 1000
 
-	var x, y, z, res1, res2 bsFieldElement_8
+	var x, y, z, res1, res2 bsFieldElement_64
 
 	for i := 0; i < iterations; i++ {
 		x.setRandomUnsafe(drng)
 		y.setRandomUnsafe(drng)
 		res1.Add(&x, &y)
 		res2.Add(&y, &x)
-		if !res1.Compare(&res2) {
-			t.Error("Addition does not commute")
+		if !res1.IsEqual(&res2) {
+			t.Error("Addition does not commute for 64-bit version")
 			break
 		}
 	}
@@ -150,8 +150,8 @@ func TestOpsOnRandomValues(t *testing.T) {
 		y.setRandomUnsafe(drng)
 		res1.Mul(&x, &y)
 		res2.Mul(&y, &x)
-		if !res1.Compare(&res2) {
-			t.Error("Multiplication does not commute")
+		if !res1.IsEqual(&res2) {
+			t.Error("Multiplication does not commute in 64-bit version")
 			break
 		}
 	}
@@ -164,8 +164,8 @@ func TestOpsOnRandomValues(t *testing.T) {
 		res1.Add(&res1, &z)
 		res2.Add(&y, &z)
 		res2.Add(&x, &res2)
-		if !res1.Compare(&res2) {
-			t.Error("Addition non assiciative")
+		if !res1.IsEqual(&res2) {
+			t.Error("Addition non assiciative (64-bit version)")
 			break
 		}
 	}
@@ -178,13 +178,12 @@ func TestOpsOnRandomValues(t *testing.T) {
 		res1.Mul(&res1, &z)
 		res2.Mul(&y, &z)
 		res2.Mul(&x, &res2)
-		if !res1.Compare(&res2) {
-			t.Error("Multiplication non assiciative")
+		if !res1.IsEqual(&res2) {
+			t.Error("Multiplication non assiciative (64-bit version)")
 			break
 		}
 	}
 }
-*/
 
 func TestMulHelpers(testing_instance *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(11141))
@@ -292,8 +291,51 @@ func TestSerializeInt_64(t *testing.T) {
 		var y bsFieldElement_64 = x
 		var xInt *big.Int = x.ToInt()
 		x.SetInt(xInt)
-		if !y.Compare(&x) {
+		if !y.IsEqual(&x) {
 			t.Fatal("Serialization roundtrip fails", i, *(x.ToInt()), *(y.ToInt()))
+		}
+	}
+}
+
+func Test_SetUIunt(t *testing.T) {
+	var drng *rand.Rand = rand.New(rand.NewSource(444))
+	const iterations = 10000
+	for i := 0; i < iterations; i++ {
+		var x uint64 = drng.Uint64()
+		xInt := big.NewInt(0)
+		xInt.SetUint64(x)
+		var a, b bsFieldElement_64
+		a.SetInt(xInt)
+		b.SetUInt64(x)
+
+		y, err := b.ToUint64()
+		if err {
+			t.Fatal("Conversion back to Uint reports too big number")
+		}
+		if x != y {
+			t.Fatal("Roundtrip uint64 -> FieldElement -> uint64 does not work")
+		}
+
+		if !a.IsEqual(&b) {
+			t.Fatal("Setting from UInt and Int is inconsistent")
+		}
+
+	}
+}
+
+func Test_MultiplyByFive(t *testing.T) {
+	var drng *rand.Rand = rand.New(rand.NewSource(444))
+	const iterations = 10000
+
+	var five, x, y bsFieldElement_64
+	five.SetUInt64(5)
+
+	for i := 0; i < iterations; i++ {
+		x.setRandomUnsafe(drng)
+		y.Mul(&x, &five)
+		x.multiply_by_five()
+		if !x.IsEqual(&y) {
+			t.Fatal("Multiplication by five does not work", i, x, y)
 		}
 	}
 }

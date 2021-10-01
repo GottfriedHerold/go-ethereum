@@ -76,7 +76,7 @@ var BaseFieldSize *big.Int = big.NewInt(0).SetBytes(BaseFieldSize_BigEndianBytes
 	since Go lacks generics:
 	(The arguments to Mul etc. in the interface and the concret type need to match, so
 	so the actual types' Mul(), Add() etc. implementation would need to accept an
-	interface type and	start by making a type assertion.)
+	interface type and start by making a type assertion.)
 type BSFieldElement_Interface interface {
 	IsZero() bool
 	IsOne() bool
@@ -89,7 +89,7 @@ type BSFieldElement_Interface interface {
 	SetInt(x *big.Int)
 	ToInt() *big.Int
 	Normalize()
-	Compare(other *BSFieldElement_Interface)
+	IsEqual(other *BSFieldElement_Interface) bool
 }
 */
 

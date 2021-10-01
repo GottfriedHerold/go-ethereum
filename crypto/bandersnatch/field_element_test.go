@@ -32,4 +32,5 @@ func TestSanity(t *testing.T) {
 	if BaseFieldBitLength > 256 {
 		t.Error("BaseFieldSize_untyped > 256 bits is not portable")
 	}
+
 }

@@ -94,6 +94,6 @@ func (z *bsFieldElement_8) Normalize() {
 }
 
 // Comparison
-func (z *bsFieldElement_8) Compare(x *bsFieldElement_8) bool {
+func (z *bsFieldElement_8) IsEqual(x *bsFieldElement_8) bool {
 	return *z == *x
 }

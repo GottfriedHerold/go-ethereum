@@ -22,7 +22,7 @@ func TestInit(t *testing.T) {
 	if !y.IsZero() {
 		t.Error("IsZero false after SetZero")
 	}
-	if !x.Compare(&y) {
+	if !x.IsEqual(&y) {
 		t.Error("Zeroes do not compare equal")
 	}
 	var drng *rand.Rand = rand.New(rand.NewSource(12431254))
@@ -59,7 +59,7 @@ func TestAssign(t *testing.T) {
 	y.SetOne()
 	z = x
 	z.Add(&x, &y)
-	if z.Compare(&x) {
+	if z.IsEqual(&x) {
 		t.Fatal("Assignment seems shallow")
 	}
 
@@ -76,7 +76,7 @@ func TestOpsOnRandomValues(t *testing.T) {
 		y.setRandomUnsafe(drng)
 		res1.Add(&x, &y)
 		res2.Add(&y, &x)
-		if !res1.Compare(&res2) {
+		if !res1.IsEqual(&res2) {
 			t.Error("Addition does not commute")
 			break
 		}
@@ -87,7 +87,7 @@ func TestOpsOnRandomValues(t *testing.T) {
 		y.setRandomUnsafe(drng)
 		res1.Mul(&x, &y)
 		res2.Mul(&y, &x)
-		if !res1.Compare(&res2) {
+		if !res1.IsEqual(&res2) {
 			t.Error("Multiplication does not commute")
 			break
 		}
@@ -101,7 +101,7 @@ func TestOpsOnRandomValues(t *testing.T) {
 		res1.Add(&res1, &z)
 		res2.Add(&y, &z)
 		res2.Add(&x, &res2)
-		if !res1.Compare(&res2) {
+		if !res1.IsEqual(&res2) {
 			t.Error("Addition non assiciative")
 			break
 		}
@@ -115,7 +115,7 @@ func TestOpsOnRandomValues(t *testing.T) {
 		res1.Mul(&res1, &z)
 		res2.Mul(&y, &z)
 		res2.Mul(&x, &res2)
-		if !res1.Compare(&res2) {
+		if !res1.IsEqual(&res2) {
 			t.Error("Multiplication non assiciative")
 			break
 		}
@@ -134,7 +134,7 @@ func TestSerializeInt(t *testing.T) {
 		var y bsFieldElement_8 = x
 		var xInt *big.Int = x.ToInt()
 		x.SetInt(xInt)
-		if !y.Compare(&x) {
+		if !y.IsEqual(&x) {
 			t.Fatal("Serialization roundtrip fails")
 		}
 	}

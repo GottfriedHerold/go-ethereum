@@ -3,12 +3,24 @@ package bandersnatch
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/big"
 	"math/bits"
 	"math/rand"
 )
 
-// 2*modulus
+/*
+	WARNING :
+	The correctness of this implementation subtly relies on
+	- the fact that BaseFieldSize/2^256 is between 1/3 and 1/2
+	(The >1/3 condition is due to the non-unique representations, where code relies on their exact possible relations.)
+	(Be aware that most computations actually *do* result in the smallest possible representation -- so this might not show in test)
+	- certain bit-patterns of BaseFieldSize and terms derived from it.
+
+	Adapting this code to other moduli is, hence, extremely error-prone!
+*/
+
+// 2 * BaseFieldSize, precomputed
 const (
 	mdoubled_64_0 = (2 * BaseFieldSize_untyped >> (iota * 64)) & 0xFFFFFFFF_FFFFFFFF
 	mdoubled_64_1
@@ -16,13 +28,29 @@ const (
 	mdoubled_64_3
 )
 
-// 2^256 - 2*modulus. This is also the Montgomery representation of 1.
-// Note: Manually doing 2's complement. since writing 1<<256-2*BaseFieldSize_untyped is not portable according to the language spec.
+// 2^512 mod BaseFieldSize. This is usedful for converting to/from montgomery form.
 const (
-	neg_mdoubled_64_0 = 0x00000001_FFFFFFFE
-	neg_mdoubled_64_1 = 0xFFFFFFFF_FFFFFFFF ^ mdoubled_64_1
-	neg_mdoubled_64_2 = 0xFFFFFFFF_FFFFFFFF ^ mdoubled_64_2
-	neg_mdoubled_64_3 = 0xFFFFFFFF_FFFFFFFF ^ mdoubled_64_3
+	rsquared_untyped = 0x748d9d99f59ff1105d314967254398f2b6cedcb87925c23c999e990f3f29c6d
+)
+
+const (
+	rsquared_64_0 = (rsquared_untyped >> (iota * 64)) & 0xFFFFFFFF_FFFFFFFF
+	rsquared_64_1
+	rsquared_64_2
+	rsquared_64_3
+)
+
+// 2^256 - 2*BaseFieldSize == 2^256 mod BaseFieldSize. This is also the Montgomery representation of 1.
+// Note: Value is 0x1824b159acc5056f_998c4fefecbc4ff5_5884b7fa00034802_00000001fffffffe
+// The weird computation is to avoid 1 << 256, which is not portable according to the go spec (too large even for untyped computations)
+
+const rModBaseField_untyped = 2 * ((1 << 255) - BaseFieldSize_untyped)
+
+const (
+	rModBaseField_64_0 uint64 = (rModBaseField_untyped >> (iota * 64)) & 0xFFFFFFFF_FFFFFFFF
+	rModBaseField_64_1
+	rModBaseField_64_2
+	rModBaseField_64_3
 )
 
 type bsFieldElement_64 struct {
@@ -38,7 +66,10 @@ var bsFieldElement_64_zero bsFieldElement_64
 // alternative representation of zero.
 var bsFieldElement_64_zero_alt bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}}
 
-var bsFieldElement_64_one bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{neg_mdoubled_64_0, neg_mdoubled_64_1, neg_mdoubled_64_2, neg_mdoubled_64_3}}
+var bsFieldElement_64_one bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{rModBaseField_64_0, rModBaseField_64_1, rModBaseField_64_2, rModBaseField_64_3}}
+
+// The number 2^256 in Montgomery form.
+var bsFieldElement_64_r bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{0: rsquared_64_0, 1: rsquared_64_1, 2: rsquared_64_2, 3: rsquared_64_3}}
 
 // Change the representation of z to restore the invariant that z.words + BaseFieldSize must not overflow.
 func (z *bsFieldElement_64) maybe_reduce_once() {
@@ -301,24 +332,58 @@ func intTouintarray(x *big.Int) (result [4]uint64) {
 	return
 }
 
-func (z *bsFieldElement_64) ToInt() *big.Int {
+// shifts the internal uint64 array once (equivalent to division by 2^64) and returns the shifted-out uint64
+func (z *bsFieldElement_64) shift_once() (result uint64) {
+	result = z.words[0]
+	z.words[0] = z.words[1]
+	z.words[1] = z.words[2]
+	z.words[2] = z.words[3]
+	z.words[3] = 0
+	return
+}
 
-	// This represents 1/2^256 in Montgomery form
-	// temp := bsFieldElement_64{words: [4]uint64{1, 0, 0, 0}}
+// gives a low-endian representation of the underlying number, undoing the Montgomery form.
+func (z *bsFieldElement_64) undoMontgomery() [4]uint64 {
 
-	// temp.words is now NOT in Montgomery form. This can be done more efficiently if needed.
-	// temp.Mul(&temp, z)
+	// What we need to do here is equivalent to
+	// temp.Mul(z, [1,0,0,0])  // where [1,0,0,0] corresponds to 1/r
 	// temp.Normalize()
+	// return temp.words
 
-	t := uintarrayToInt(&z.words)
+	// -1/Modulus mod r.
+	const negativeInverseModulus = (0xFFFFFFFF_FFFFFFFF * 0x00000001_00000001) % (1 << 64)
+	const negativeInverseModulus_uint uint64 = negativeInverseModulus
 
-	var converter *big.Int = big.NewInt(1)
-	converter.Lsh(converter, 256)
-	converter.ModInverse(converter, BaseFieldSize)
-	t.Mul(t, converter)
-	t.Mod(t, BaseFieldSize)
+	var reducer uint64 = z.words[0]
+	var temp bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{0: z.words[1], 1: z.words[2], 2: z.words[3], 3: 0}}
 
-	return t
+	if reducer != 0 {
+		montgomery_step_64(&temp.words, reducer*negativeInverseModulus_uint)
+	}
+	reducer = temp.shift_once()
+	if reducer != 0 {
+		montgomery_step_64(&temp.words, reducer*negativeInverseModulus_uint)
+	}
+
+	reducer = temp.shift_once()
+	if reducer != 0 {
+		montgomery_step_64(&temp.words, reducer*negativeInverseModulus_uint)
+	}
+
+	reducer = temp.shift_once()
+	if reducer != 0 {
+		// TODO: Store directly into z
+		montgomery_step_64(&temp.words, reducer*negativeInverseModulus_uint)
+	}
+
+	temp.maybe_reduce_once()
+	temp.Normalize()
+	return temp.words
+}
+
+func (z *bsFieldElement_64) ToInt() *big.Int {
+	temp := z.undoMontgomery()
+	return uintarrayToInt(&temp)
 }
 
 func (z *bsFieldElement_64) SetInt(v *big.Int) {
@@ -335,13 +400,68 @@ func (z *bsFieldElement_64) SetInt(v *big.Int) {
 	z.words = intTouintarray(w)
 }
 
+// If z represents a value that can be represented by a uint64, return is (an OK = true), otherwise set OK to false
+func (z *bsFieldElement_64) ToUint64() (result uint64, err bool) {
+	temp := z.undoMontgomery()
+	result = temp[0]
+	err = (temp[1] | temp[2] | temp[3]) != 0
+	return
+}
+
+// Sets z to the given value
+func (z *bsFieldElement_64) SetUInt64(value uint64) {
+	// Set z to value/2^256 (due to Montgomery Form):
+	z.words[0] = value
+	z.words[1] = 0
+	z.words[2] = 0
+	z.words[3] = 0
+
+	// Multiply z by 2^256:
+	z.Mul(z, &bsFieldElement_64_r)
+}
+
 // Generate uniformly random number. Note that this is not crypto-grade randomness. Testing only.
 // We do NOT guarantee that the distribution is even close to uniform.
 func (z *bsFieldElement_64) setRandomUnsafe(rnd *rand.Rand) {
 
-	// Not the most efficient way, but for testing purposes we want the _64 and _8 variants to have the same output for given rnd
+	// Not the most efficient way (transformation to Montgomery form is obviously not needed), but for testing purposes we want the _64 and _8 variants to have the same output for given rnd
 	var xInt *big.Int = new(big.Int).Rand(rnd, BaseFieldSize)
 	z.SetInt(xInt)
+}
+
+// Computes z *= 5. This is useful, because the coefficient of a in the twisted Edwards representation of Bandersnatch is a=-5
+func (z *bsFieldElement_64) multiply_by_five() {
+
+	var overflow1, overflow2, overflow3, overflow4 uint64 // overflow_i contributes to the i-th uint64
+	var carry uint64
+	// could do this with bit fiddling as well, but that's more complicated and probably slower (depends on compiler)
+	overflow1, z.words[0] = bits.Mul64(z.words[0], 5)
+	overflow2, z.words[1] = bits.Mul64(z.words[1], 5)
+	overflow3, z.words[2] = bits.Mul64(z.words[2], 5)
+	overflow4, z.words[3] = bits.Mul64(z.words[3], 5)
+
+	// Note that due to the size restrictions on z and the particular value of BaseFieldSize, 0 <= overflow4 <= 2
+	// overflow4 contributes overflow4 * 2^256 == overflow4 * rModBaseField (mod BaseField) to the total result.
+
+	// contributions due to overflows:
+	overflow1 += overflow4 * rModBaseField_64_1
+	overflow2 += overflow4 * rModBaseField_64_2 // this overflows itself iff overflow4 == 2
+	overflow3 += overflow4*rModBaseField_64_3 + (overflow4 / 2)
+	overflow4 *= rModBaseField_64_0 // read as overflow0 := overflow4 * rModBaseField_64_0
+
+	z.words[0], carry = bits.Add64(z.words[0], overflow4, 0)
+	z.words[1], carry = bits.Add64(z.words[1], overflow1, carry)
+	z.words[2], carry = bits.Add64(z.words[2], overflow2, carry)
+	z.words[3], carry = bits.Add64(z.words[3], overflow3, carry)
+
+	overflow4 = carry * 0xFFFFFFFF_FFFFFFFF
+
+	z.words[0], carry = bits.Add64(z.words[0], overflow4&rModBaseField_64_0, 0)
+	z.words[1], carry = bits.Add64(z.words[1], overflow4&rModBaseField_64_1, carry)
+	z.words[2], carry = bits.Add64(z.words[2], overflow4&rModBaseField_64_2, carry)
+	z.words[3], _ = bits.Add64(z.words[3], overflow4&rModBaseField_64_3, carry) // _ == 0 is guaranteed
+
+	z.maybe_reduce_once()
 }
 
 // Multiplicative Inverse
@@ -354,9 +474,10 @@ func (z *bsFieldElement_64) Inv(x *bsFieldElement_64) {
 }
 
 // Checks whether z == x (mod BaseFieldSize)
-func (z *bsFieldElement_64) Compare(x *bsFieldElement_64) bool {
+func (z *bsFieldElement_64) IsEqual(x *bsFieldElement_64) bool {
 	// There are at most 2 possible representations per field element and they differ by exactly BaseFieldSize.
 	// So it is enough to reduce the larger one, provided it is much larger.
+
 	switch {
 	case z.words[3] == x.words[3]:
 		return *z == *x
@@ -380,4 +501,27 @@ func (z *bsFieldElement_64) Compare(x *bsFieldElement_64) bool {
 	default:
 		panic("This cannot happen")
 	}
+}
+
+// useful for debugging
+func (z *bsFieldElement_64) Format(s fmt.State, ch rune) {
+	z.Normalize()
+	z.ToInt().Format(s, ch)
+}
+
+func (z *bsFieldElement_64) String() string {
+	z.Normalize()
+	return z.ToInt().String()
+}
+
+func (z *bsFieldElement_64) AddEq(x *bsFieldElement_64) {
+	z.Add(z, x)
+}
+
+func (z *bsFieldElement_64) SubEq(x *bsFieldElement_64) {
+	z.Sub(z, x)
+}
+
+func (z *bsFieldElement_64) MulEq(x *bsFieldElement_64) {
+	z.Mul(z, x)
 }
