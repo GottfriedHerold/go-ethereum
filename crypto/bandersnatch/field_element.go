@@ -93,4 +93,10 @@ type BSFieldElement_Interface interface {
 }
 */
 
-type BSFieldElement = bsFieldElement_64
+type FieldElement = bsFieldElement_64
+
+var (
+	FieldElementOne      = bsFieldElement_64_one
+	FieldElementZero     = bsFieldElement_64_zero
+	FieldElementZero_alt = bsFieldElement_64_zero_alt
+)

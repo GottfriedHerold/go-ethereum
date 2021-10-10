@@ -147,6 +147,11 @@ func (z *bsFieldElement_64) Sub(x, y *bsFieldElement_64) {
 	}
 }
 
+// Additive inverse (i.e. z := -x)
+func (z *bsFieldElement_64) Neg(x *bsFieldElement_64) {
+	z.Sub(&bsFieldElement_64_zero_alt, x) // using alt here makes the if borrow!=0 in Sub unlikely.
+}
+
 // Multiply 4x64 bit number by a 1x64 bit number. The result is 5x64 bits, split as 1x64 (low) + 4x64 (high), everything low-endian.
 func mul_four_one_64(x *[4]uint64, y uint64) (low uint64, high [4]uint64) {
 	var carry, mul_result_low uint64
@@ -372,7 +377,6 @@ func (z *bsFieldElement_64) undoMontgomery() [4]uint64 {
 
 	reducer = temp.shift_once()
 	if reducer != 0 {
-		// TODO: Store directly into z
 		montgomery_step_64(&temp.words, reducer*negativeInverseModulus_uint)
 	}
 
@@ -497,7 +501,7 @@ func (z *bsFieldElement_64) IsEqual(x *bsFieldElement_64) bool {
 		} else {
 			return false
 		}
-	// needed to make golang not complain about missing return in all branches.
+	// needed to make golang not complain about missing return in all branches. The cases above are obviously exhaustive.
 	default:
 		panic("This cannot happen")
 	}

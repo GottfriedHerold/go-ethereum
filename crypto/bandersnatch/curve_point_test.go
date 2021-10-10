@@ -15,3 +15,7 @@ func TestGlobalParameter(t *testing.T) {
 		t.Fatal("Parameter d of curve is a square")
 	}
 }
+
+func TestInterfaces(t *testing.T) {
+	var _ CurvePointRead = &Point_xtw{}
+}
