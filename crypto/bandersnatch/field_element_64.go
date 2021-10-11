@@ -53,6 +53,16 @@ const (
 	rModBaseField_64_3
 )
 
+// Negative of rModBaseField modulo BaseFieldSize. This is the Montgomery representation of -1.
+const montgomeryNegOne_untyped = BaseFieldSize_untyped - rModBaseField_untyped
+
+const (
+	montgomeryNegOne_0 uint64 = (montgomeryNegOne_untyped >> (iota * 64)) & 0xFFFFFFFF_FFFFFFFF
+	montgomeryNegOne_1
+	montgomeryNegOne_2
+	montgomeryNegOne_3
+)
+
 type bsFieldElement_64 struct {
 	// field elements stored in low-endian 64-bit uints in Montgomery form, i.e. words encodes a number x s.t.
 	// words - x * (1<<256) == 0 (mod BaseFieldSize).
@@ -66,7 +76,11 @@ var bsFieldElement_64_zero bsFieldElement_64
 // alternative representation of zero.
 var bsFieldElement_64_zero_alt bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}}
 
+// The field element 1.
 var bsFieldElement_64_one bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{rModBaseField_64_0, rModBaseField_64_1, rModBaseField_64_2, rModBaseField_64_3}}
+
+// The field element -1
+var bsFieldElement_64_minusone bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{montgomeryNegOne_0, montgomeryNegOne_1, montgomeryNegOne_2, montgomeryNegOne_3}}
 
 // The number 2^256 in Montgomery form.
 var bsFieldElement_64_r bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{0: rsquared_64_0, 1: rsquared_64_1, 2: rsquared_64_2, 3: rsquared_64_3}}

@@ -297,7 +297,7 @@ func TestSerializeInt_64(t *testing.T) {
 	}
 }
 
-func Test_SetUIunt(t *testing.T) {
+func TestSetUIunt(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(444))
 	const iterations = 10000
 	for i := 0; i < iterations; i++ {
@@ -323,7 +323,7 @@ func Test_SetUIunt(t *testing.T) {
 	}
 }
 
-func Test_MultiplyByFive(t *testing.T) {
+func TestMultiplyByFive(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(444))
 	const iterations = 10000
 
@@ -337,5 +337,16 @@ func Test_MultiplyByFive(t *testing.T) {
 		if !x.IsEqual(&y) {
 			t.Fatal("Multiplication by five does not work", i, x, y)
 		}
+	}
+}
+
+func TestConstants(t *testing.T) {
+	if !bsFieldElement_64_zero.IsEqual(&bsFieldElement_64_zero_alt) {
+		t.Fatal("Different representations of zero do not compare equal")
+	}
+	var temp bsFieldElement_64
+	temp.Add(&bsFieldElement_64_minusone, &bsFieldElement_64_one)
+	if !temp.IsZero() {
+		t.Fatal("Representation of one or minus one are inconsistent: They do not add to zero")
 	}
 }

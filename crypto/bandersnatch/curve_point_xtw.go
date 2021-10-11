@@ -38,6 +38,8 @@ var (
 	NeutralElement_xtw Point_xtw = Point_xtw{x: FieldElementZero, y: FieldElementOne, t: FieldElementZero, z: FieldElementOne}
 )
 
+
+
 // X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates.
 func (P *Point_xtw) X_affine() FieldElement {
 	P.make_affine_x()
@@ -48,6 +50,12 @@ func (P *Point_xtw) X_affine() FieldElement {
 func (P *Point_xtw) Y_affine() FieldElement {
 	P.make_affine_x()
 	return P.y
+}
+
+// T_affine returns the T coordinate (i.e. T=XY) of the given point in affine twisted Edwards coordinates.
+func (P *Point_xtw) T_affine() FieldElement {
+	P.make_affine_x()
+	return P.t
 }
 
 // X_projective returns the X coordinate of the given point P in projective twisted Edwards coordinates.
@@ -71,6 +79,15 @@ func (P *Point_xtw) Z_projective() FieldElement {
 	return P.z
 }
 
+// T_projective returns the T coordinate of the given point P in projective twisted Edwards coordinates (i.e. T = XY/Z).
+// Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
+// so callers must not interleave calling other functions.
+func (P *Point_xtw) T_projective() FieldElement {
+	return P.t
+}
+
+// TODO: Should IsAffine and MakeAffine be exported in the first place?
+
 func (P *Point_xtw) MakeAffine() {
 	if !P.IsAffine() {
 		P.make_affine_x()
@@ -81,6 +98,7 @@ func (p *Point_xtw) IsAffine() bool {
 	return p.z.IsOne()
 }
 
+// AffineExtended returns a copy of the point in affine extended coordinates.
 func (p *Point_xtw) AffineExtended() Point_axtw {
 	p.MakeAffine()
 	return Point_axtw{x: p.x, y: p.y, t: p.t}
@@ -92,12 +110,12 @@ func (P *Point_xtw) IsZero() bool {
 	return P.x.IsZero()
 }
 
-// Sets the Point P to the neutral element of the curve.
+// SetZero sets the Point P to the neutral element of the curve.
 func (P *Point_xtw) SetZero() {
 	*P = NeutralElement_xtw
 }
 
-// internal function that tests for zero-ness even if we do not know that the point is in the subgroup. We only assume that x,y,t,z satisfy the curve equation. Returns false for z == 0
+// internal function that tests for zero-ness even if we do not know that the point is in the subgroup. We only assume that x,y,t,z satisfy the curve equations. Returns false for z == 0
 func (P *Point_xtw) isZero_safe() bool {
 	// We check this separately, because we might log this event.
 	if P.z.IsZero() {
