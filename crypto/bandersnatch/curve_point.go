@@ -43,6 +43,17 @@ var (
 	TwistedEdwardsD_fe  FieldElement = func() (ret FieldElement) { ret.SetInt(TwistedEdwardsD_Int); return }()
 )
 
+// SqrtDDivA is a square root of d/a
+const (
+	SqrtDDivA        = 37446463827641770816307242315180085052603635617490163568005256780843403514038 // Note: Not in hex
+	SqrtDDivA_string = "37446463827641770816307242315180085052603635617490163568005256780843403514038"
+)
+
+var (
+	SqrtDDivA_Int, sqrtDDivA_Good              = new(big.Int).SetString(SqrtDDivA_string, 0)
+	SqrtDDivA_fe                  FieldElement = func() (ret FieldElement) { ret.SetInt(SqrtDDivA_Int); return }()
+)
+
 /*
 	Caveat: Bandersnatch is typically represented as a twisted Edwards curve, which means there are singularities
 	at infinity. These singularities are not in the large-prime order subgroup. (the cofactor is 4)
@@ -79,11 +90,18 @@ type CurvePoint interface {
 }
 
 const (
-	a1 = 0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4
-	a2 = 0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4
-	b1 = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4
-	b2 = 0x4247698f4e32ad45a293959b4ca17afa4a2d2317e4c6ce5023e1fd63d1b5de9b
-	c1 = 0x2123b4c7a71956a2d149cacda650bd7d2516918bf263672811f0feb1e8daef4d
-	T  = a2 - a1
-	T2 = b2 - 2*c1
+	endo_a1        = 0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4
+	endo_a1_string = "0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4"
+	endo_a2        = 0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4
+	endo_a2_string = "0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4"
+	endo_b         = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4
+	endo_b_string  = "0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4"
+	// endo_c1 == - endo_b
+	//c1 = 0x2123b4c7a71956a2d149cacda650bd7d2516918bf263672811f0feb1e8daef4d
+)
+
+var (
+	endo_a1_fe FieldElement = initFieldElementFromString(endo_a1_string)
+	endo_a2_fe FieldElement = initFieldElementFromString(endo_a2_string)
+	endo_b_fe  FieldElement = initFieldElementFromString(endo_b_string)
 )

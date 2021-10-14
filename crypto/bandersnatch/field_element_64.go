@@ -73,7 +73,7 @@ type bsFieldElement_64 struct {
 
 var bsFieldElement_64_zero bsFieldElement_64
 
-// alternative representation of zero.
+// alternative representation of zero. Note that we must never call Normalize() on it, which e.g. IsEqual may do.
 var bsFieldElement_64_zero_alt bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}}
 
 // The field element 1.
@@ -542,4 +542,25 @@ func (z *bsFieldElement_64) SubEq(x *bsFieldElement_64) {
 
 func (z *bsFieldElement_64) MulEq(x *bsFieldElement_64) {
 	z.Mul(z, x)
+}
+
+func (z *bsFieldElement_64) Square(x *bsFieldElement_64) {
+	z.Mul(x, x)
+}
+
+func (z *bsFieldElement_64) SquareEq() {
+	z.Mul(z, z)
+}
+
+// initFieldElementFromString initializes a field element from a given string. The given string can be decimal or hex, but needs to be prefixed if hex.
+// Since we only use it internally to initialize from (compile-time!) constant strings, panic() on error is appropriate.
+func initFieldElementFromString(input string) (output bsFieldElement_64) {
+	var t *big.Int = big.NewInt(0)
+	var success bool
+	t, success = t.SetString(input, 0)
+	if !success {
+		panic("String not recognized as number")
+	}
+	output.SetInt(t)
+	return
 }

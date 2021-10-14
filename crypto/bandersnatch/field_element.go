@@ -96,7 +96,12 @@ type BSFieldElement_Interface interface {
 type FieldElement = bsFieldElement_64
 
 var (
-	FieldElementOne      = bsFieldElement_64_one
-	FieldElementZero     = bsFieldElement_64_zero
-	FieldElementZero_alt = bsFieldElement_64_zero_alt
+	FieldElementOne  = bsFieldElement_64_one
+	FieldElementZero = bsFieldElement_64_zero
+
+	// We do not expose FieldElementZero_alt, because users doing IsEqual(&FieldElementZero_alt, .) might call Normalize() on it, which would make
+	// IsZero() subsequently fail.
+	// FieldElementZero_alt = bsFieldElement_64_zero_alt
+
+	FieldElementMinusOne = bsFieldElement_64_minusone
 )

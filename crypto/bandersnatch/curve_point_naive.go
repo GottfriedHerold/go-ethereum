@@ -94,6 +94,6 @@ func make_random_twedwards_full(rnd *rand.Rand) Point_xtw {
 // Creates a random point on the correct subgroup
 func make_random_x(rnd *rand.Rand) Point_xtw {
 	r := make_random_twedwards_full(rnd)
-	r.clearCofactor()
+	r.clearCofactor2()
 	return r
 }

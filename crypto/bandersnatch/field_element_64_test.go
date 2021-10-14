@@ -1,6 +1,7 @@
 package bandersnatch
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -341,11 +342,23 @@ func TestMultiplyByFive(t *testing.T) {
 }
 
 func TestConstants(t *testing.T) {
+	// Note that IsEqual can internally call Normalize(). This is not a problem, because we do not export it.
+	var oldaltzero = bsFieldElement_64_zero_alt
 	if !bsFieldElement_64_zero.IsEqual(&bsFieldElement_64_zero_alt) {
 		t.Fatal("Different representations of zero do not compare equal")
 	}
-	var temp bsFieldElement_64
+	bsFieldElement_64_zero_alt = oldaltzero
+	var temp bsFieldElement_64 = bsFieldElement_64_zero
+	if !temp.IsZero() {
+		t.Fatal("Zero is not recognized as zero")
+	}
+	temp = bsFieldElement_64_zero_alt
+	if !temp.IsZero() {
+		t.Fatal("Alternative representation of zero is not recognized as zero")
+	}
 	temp.Add(&bsFieldElement_64_minusone, &bsFieldElement_64_one)
+	fmt.Println(temp.words)
+	fmt.Println(bsFieldElement_64_zero_alt.words)
 	if !temp.IsZero() {
 		t.Fatal("Representation of one or minus one are inconsistent: They do not add to zero")
 	}
