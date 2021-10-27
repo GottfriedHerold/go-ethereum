@@ -1,7 +1,6 @@
 package bandersnatch
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 )
@@ -94,69 +93,74 @@ func TestSingularAddition(t *testing.T) {
 
 func TestPsi(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(6666))
-	var temp, result1, result2 Point_xtw
-	temp = make_random_twedwards_full(drng)
-	result1.psi_regular_xx(&temp)
-	result2.psi_exceptional_xx(&temp)
+	var temp1, temp2, temp3, result1, result2, result3 Point_xtw
+	temp1 = make_random_twedwards_full(drng)
+	result1.psi_xx(&temp1)
 	if !result1.verify_Point_on_Curve() {
-		t.Fatal("Result of Endomorphism(regular) is not on curve")
+		t.Fatal("Psi(random point) is not on curve")
 	}
-	if !result2.verify_Point_on_Curve() {
-		t.Fatal("Result of Endomorphism(exc) is not on curve")
+
+	temp2 = make_random_twedwards_full(drng)
+	temp3.add_xxx(&temp1, &temp2)
+	result2.psi_xx(&temp2)
+	result1.add_xxx(&result1, &result2)
+	result3.psi_xx(&temp3)
+	if !result1.is_equal_safe_xx(&result3) {
+		t.Fatal("Psi is not homomorphic")
 	}
+
+	temp1.SetZero()
+	result1.psi_xx(&temp1)
+	if !result1.IsZero_safe() {
+		t.Fatal("Psi(Neutral) != Neutral")
+	}
+
+	temp1 = orderTwoPoint_xtw
+	result1.psi_xx(&temp1)
+	if !result1.IsZero_safe() {
+		t.Fatal("Psi(affine order-2 point) != Neutral")
+	}
+
+	temp2 = make_random_twedwards_full(drng)
+	temp1.sub_xxx(&orderTwoPoint_xtw, &temp2)
+	result1.psi_xx(&temp1)
+	result2.psi_xx(&temp2)
+	result3.add_xxx(&temp1, &temp2)
+	if !result3.IsZero_safe() {
+		t.Fatal("Psi is not homomorphic for sum = affine-order-2")
+	}
+
+	result1.psi_xx_safe(&exceptionalPoint_1)
+	if !result1.is_equal_safe_xx(&orderTwoPoint_xtw) {
+		t.Fatal("Psi(E1) != affine-order-2")
+	}
+	temp2 = make_random_twedwards_full(drng)
+	temp1.sub_xxx(&exceptionalPoint_1, &temp2)
+	if temp1.IsSingular() {
+		t.Fatal("Unexpected singularity encountered")
+	}
+	result1.psi_xx_safe(&temp1)
+	result2.psi_xx_safe(&temp2)
+	temp3.add_xxx(&temp1, &temp2)
+	if result1.IsSingular() || result2.IsSingular() || temp3.IsSingular() {
+		t.Fatal("Unexpected singularity encountered")
+	}
+	if !temp3.is_equal_safe_xx(&exceptionalPoint_1) {
+		t.Fatal("Associative Law fails when sum is E1")
+	}
+	result1.add_xxx(&result1, &result2) // requires add_xxx to be safe enough, which it is.
+	if !result1.is_equal_safe_xx(&orderTwoPoint_xtw) {
+		t.Fatal("Homomorphic properties of Psi unsatisfied when sum is E1")
+	}
+	result1.psi_xx_safe(&exceptionalPoint_2)
+	if !result1.is_equal_safe_xx(&orderTwoPoint_xtw) {
+		t.Fatal("Psi(E2) != affine-order-2 point")
+	}
+
+	temp1 = make_random_x(drng)
+	result1.psi_xx(&temp1)
+	result2.exp_naive_xx(&temp1, GLSEigenvalue_Int)
 	if !result1.is_equal_safe_xx(&result2) {
-		t.Fatal("Endomorphisms versions for regular and exceptional do not match on random point")
-	}
-
-	temp.SetZero()
-	result1.psi_regular_xx(&temp)
-	result2.psi_exceptional_xx(&temp)
-	if !result2.IsSingular() {
-		t.Error("Psi_exc(Neutral) is Non-singular")
-	}
-
-	if result1.IsSingular() {
-		t.Fatal("Psi_reg(Neutral) is singular")
-	}
-	if !result1.verify_Point_on_Curve() {
-		t.Fatal("Psi_reg(Neutral) is not on curve")
-	}
-	if !result1.IsZero_safe() {
-		t.Fatal("Psi_reg(Neutral) != Neutral")
-	}
-
-	temp = orderTwoPoint
-	result1.psi_regular_xx(&temp)
-	result2.psi_exceptional_xx(&temp)
-	if !result2.IsSingular() {
-		t.Error("Psi_exc(affine order-2 point is non-singular")
-	}
-	if result1.IsSingular() {
-		t.Fatal("Psi_reg(affine order-2 point) is singular")
-	}
-	if !result1.verify_Point_on_Curve() {
-		t.Fatal("Psi_reg(affine order-2 point) is not on curve")
-	}
-	if !result1.IsZero_safe() {
-		t.Fatal("Psi_reg(affine order-2 point) != Neutral")
-	}
-
-	// Note that the choice of Psi vs. its dual breaks the symmetry between the two points at infinity.
-	temp = exceptionalPoint_1
-	result1.psi_regular_xx(&temp)
-	result2.psi_exceptional_xx(&temp)
-	if !result1.IsSingular() {
-		t.Error("Psi_reg(order-2 point1 at inifinity is non-singular")
-	}
-	if result2.IsSingular() {
-		t.Fatal("Psi_exc(order-2 point1 at infinity is singular")
-	}
-	if !result2.verify_Point_on_Curve() {
-		t.Fatal("Psi_exc(order-2 point1 at infinity is not on curve")
-	}
-	if result2.is_equal_safe_xx(&exceptionalPoint_1) {
-		fmt.Println("Psi_exc(E1) == E1")
-	} else if result1.is_equal_safe_xx(&exceptionalPoint_2) {
-		fmt.Println("Psi_exc(E1) == E2")
+		t.Fatal("Psi does not act as multiplication by GLSEigenvalue on random point in subgroup")
 	}
 }

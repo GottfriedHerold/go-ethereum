@@ -71,7 +71,7 @@ func TestQuotientGroup(t *testing.T) {
 			NumN++
 		} else if !temp.z.IsZero() {
 			// temp must be the affine order two point.
-			if !temp.is_equal_safe_xx(&orderTwoPoint) {
+			if !temp.is_equal_safe_xx(&orderTwoPoint_xtw) {
 				t.Fatal("p253 * random point is affine and not neutral, but does not compare equal to the known order-2 point.")
 			}
 			// As is_equal_safe makes some assertions, we double-check that the point is what we expect, avoiding function calls
@@ -81,10 +81,10 @@ func TestQuotientGroup(t *testing.T) {
 			temp.y.MulEq(&temp.z)
 			temp.t.MulEq(&temp.z)
 			temp.z.SetOne()
-			if !orderTwoPoint.z.IsOne() {
+			if !orderTwoPoint_xtw.z.IsOne() {
 				t.Fatal("affine order 2 point is not in affine form")
 			}
-			if !(temp.x.IsEqual(&orderTwoPoint.x) && temp.y.IsEqual(&orderTwoPoint.y) && temp.t.IsEqual(&orderTwoPoint.t)) {
+			if !(temp.x.IsEqual(&orderTwoPoint_xtw.x) && temp.y.IsEqual(&orderTwoPoint_xtw.y) && temp.t.IsEqual(&orderTwoPoint_xtw.t)) {
 				t.Fatal("p253 * random point equals affine order-2 point according to is_equal_safe, but coos don't match", temp.x.String(), temp.y.String(), temp.z.String())
 			}
 			isD = 1

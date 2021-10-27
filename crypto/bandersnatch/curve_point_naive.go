@@ -47,7 +47,7 @@ func (out *Point_xtw) add_xxx_naive(input1, input2 *Point_xtw) {
 	out.y.Mul(&numerator_y, &denom_x)
 }
 
-// Creates a random point on the curve, which need not be in the correct subgroup.
+// Creates a random point on the curve, which does not neccessarily need to be in the correct subgroup.
 func make_random_twedwards_full(rnd *rand.Rand) Point_xtw {
 
 	var x, x2, y, t, z, num, denom bsFieldElement_64

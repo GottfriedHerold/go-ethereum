@@ -15,7 +15,7 @@ const (
 )
 
 const Cofactor = 4
-const CurverOrder = Cofactor * GroupOrder
+const CurveOrder = Cofactor * GroupOrder
 
 var GroupOrder_Int *big.Int = new(big.Int).SetBytes(common.FromHex(GroupOrder_string))
 var Cofactor_Int *big.Int = big.NewInt(Cofactor)
@@ -43,15 +43,16 @@ var (
 	TwistedEdwardsD_fe  FieldElement = func() (ret FieldElement) { ret.SetInt(TwistedEdwardsD_Int); return }()
 )
 
-// SqrtDDivA is a square root of d/a
+// SqrtDDivA is a square root of d/a. Due to the way the bandersnatch curve was constructed, we have (sqrt(d/a) + 1)^2 == 2.
+// This number appears in coordinates of the order-2 points at inifinity and in the formulae for the endomorphism.
 const (
 	SqrtDDivA        = 37446463827641770816307242315180085052603635617490163568005256780843403514038 // Note: Not in hex
 	SqrtDDivA_string = "37446463827641770816307242315180085052603635617490163568005256780843403514038"
 )
 
 var (
-	SqrtDDivA_Int, sqrtDDivA_Good              = new(big.Int).SetString(SqrtDDivA_string, 0)
-	SqrtDDivA_fe                  FieldElement = func() (ret FieldElement) { ret.SetInt(SqrtDDivA_Int); return }()
+	SqrtDDivA_Int *big.Int     = initIntFromString(SqrtDDivA_string) // TODO: Do we need this?
+	SqrtDDivA_fe  FieldElement = initFieldElementFromString(SqrtDDivA_string)
 )
 
 /*
@@ -71,8 +72,8 @@ type CurvePointRead interface {
 	Y_affine() FieldElement
 	Y_projective() FieldElement
 	Z_projective() FieldElement
-	IsAffine() bool
-	MakeAffine()
+	IsAffine() bool //TODO: Consier removal
+	MakeAffine()    // TODO: Consider removal
 }
 
 type CurvePointWrite interface {
@@ -94,8 +95,10 @@ const (
 	endo_a1_string = "0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4"
 	endo_a2        = 0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4
 	endo_a2_string = "0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4"
-	endo_b         = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4
+	endo_b         = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4 // == sqrt(2) - 1 == sqrt(a/d)
 	endo_b_string  = "0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4"
+	endo_c         = 0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d
+	endo_c_string  = "0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d"
 	// endo_c1 == - endo_b
 	//c1 = 0x2123b4c7a71956a2d149cacda650bd7d2516918bf263672811f0feb1e8daef4d
 )
@@ -104,4 +107,5 @@ var (
 	endo_a1_fe FieldElement = initFieldElementFromString(endo_a1_string)
 	endo_a2_fe FieldElement = initFieldElementFromString(endo_a2_string)
 	endo_b_fe  FieldElement = initFieldElementFromString(endo_b_string)
+	endo_c_fe  FieldElement = initFieldElementFromString(endo_c_string)
 )

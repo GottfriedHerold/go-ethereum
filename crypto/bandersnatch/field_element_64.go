@@ -551,16 +551,3 @@ func (z *bsFieldElement_64) Square(x *bsFieldElement_64) {
 func (z *bsFieldElement_64) SquareEq() {
 	z.Mul(z, z)
 }
-
-// initFieldElementFromString initializes a field element from a given string. The given string can be decimal or hex, but needs to be prefixed if hex.
-// Since we only use it internally to initialize from (compile-time!) constant strings, panic() on error is appropriate.
-func initFieldElementFromString(input string) (output bsFieldElement_64) {
-	var t *big.Int = big.NewInt(0)
-	var success bool
-	t, success = t.SetString(input, 0)
-	if !success {
-		panic("String not recognized as number")
-	}
-	output.SetInt(t)
-	return
-}
