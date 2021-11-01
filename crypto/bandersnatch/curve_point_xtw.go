@@ -29,10 +29,8 @@ type Point_xtw struct {
 	T3 = (X1Y2 + Y1X2)(Y1Y2-aX1X2)
 	Z3 = (Z1Z2 - dT1T2)(Z1Z2 + dT1T2)
 
-	which we call the extended twisted Edwards model.
-	In the literature, this is usually considered as a redundant coordinate representation rather than a curve model (like Weierstrass, Montgomery, (twisted) Edwards).
-	TODO: I (Gottfried) am not aware of any literature at all analysing this as a curve model. If you find one, put a reference here.
-
+	which we call the extended twisted Edwards model. We treat this as a curve model (like Weierstrass, Montgomery, (twisted) Edwards) rather than a redundant coordinate representaion.
+	
 	Clearly, the set of affine solutions corresponds exactly to the set of affine solutions of the usual twisted Edwards equation ax^2 + y^2 = 1+dx^2y^2
 	(with z==1, t==x*y), but there are differences in the behaviour at infinity:
 	Notably, the twisted Edwards curve has 2+2 points at infinity and the curve is actually singular there:
@@ -59,8 +57,8 @@ type Point_xtw struct {
 */
 
 // example point on the subgroup specified in the bandersnatch paper
-var example_generator_x *big.Int = new(big.Int).SetBytes(common.FromHex("0x29c132cc2c0b34c5743711777bbe42f32b79c022ad998465e1e71866a252ae18"))
-var example_generator_y *big.Int = new(big.Int).SetBytes(common.FromHex("0x2a6c669eda123e0f157d8b50badcd586358cad81eee464605e3167b6cc974166"))
+var example_generator_x *big.Int = initIntFromString("0x29c132cc2c0b34c5743711777bbe42f32b79c022ad998465e1e71866a252ae18"))
+var example_generator_y *big.Int = initIntFromString("0x2a6c669eda123e0f157d8b50badcd586358cad81eee464605e3167b6cc974166"))
 var example_generator_t *big.Int = new(big.Int).Mul(example_generator_x, example_generator_y)
 var example_generator_xtw Point_xtw = func() (ret Point_xtw) {
 	ret.x.SetInt(example_generator_x)
