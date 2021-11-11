@@ -62,17 +62,28 @@ func TestQuotientGroup(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(1024))
 	var temp Point_xtw
 	var NumN, NumD, NumE1, NumE2 uint16
+	var LegCheck bool
 	for i := 0; i < iterations; i++ {
 		temp = make_random_twedwards_full(drng)
+		LegCheck = temp.legendre_check_point()
 		temp.exp_naive_xx(&temp, GroupOrder_Int)
 		var isN, isD, isE1, isE2 int = 0, 0, 0, 0
+		if temp.IsSingular() {
+			t.Fatal("p253 * random point resulted in singularity")
+		}
 		if temp.IsZero_safe() {
 			isN = 1
 			NumN++
+			if !LegCheck {
+				t.Fatal("Legendre Check failed in subgroup")
+			}
 		} else if !temp.z.IsZero() {
 			// temp must be the affine order two point.
 			if !temp.is_equal_safe_xx(&orderTwoPoint_xtw) {
 				t.Fatal("p253 * random point is affine and not neutral, but does not compare equal to the known order-2 point.")
+			}
+			if !LegCheck {
+				t.Fatal("Legendre Check failed in affine oder-2 coset of p253-subgroup ")
 			}
 			// As is_equal_safe makes some assertions, we double-check that the point is what we expect, avoiding function calls
 			// that might expect the point to be in the subgroup.
@@ -90,6 +101,7 @@ func TestQuotientGroup(t *testing.T) {
 			isD = 1
 			NumD++
 		} else {
+			// temp.z == 0 is guaranteed
 			// temp must be a point of order 2 at infinity.
 			if temp.t.IsZero() {
 				t.Fatal("p253 * random point resulted in point with t==z==0. This should not happen.")
@@ -99,6 +111,9 @@ func TestQuotientGroup(t *testing.T) {
 			}
 			if !(temp.is_equal_safe_xx(&exceptionalPoint_1) || temp.is_equal_safe_xx(&exceptionalPoint_2)) {
 				t.Fatal("p253 * random point is non-affine, but does not compare equal to the known exceptional points.")
+			}
+			if LegCheck {
+				t.Fatal("Legendre Check did not give false result in Exceptional+p253 coset of p253")
 			}
 			temp.t.Inv(&temp.t)
 			temp.x.MulEq(&temp.t)

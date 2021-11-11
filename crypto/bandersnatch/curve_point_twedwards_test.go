@@ -159,8 +159,8 @@ func TestPsi(t *testing.T) {
 
 	temp1 = make_random_x(drng)
 	result1.psi_xx(&temp1)
-	result2.exp_naive_xx(&temp1, GLSEigenvalue_Int)
+	result2.exp_naive_xx(&temp1, EndoEigenvalue_Int)
 	if !result1.is_equal_safe_xx(&result2) {
-		t.Fatal("Psi does not act as multiplication by GLSEigenvalue on random point in subgroup")
+		t.Fatal("Psi does not act as multiplication by EndoEigenvalue on random point in subgroup")
 	}
 }

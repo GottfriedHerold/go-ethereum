@@ -2,8 +2,6 @@ package bandersnatch
 
 import (
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Curve parameters
@@ -17,16 +15,16 @@ const (
 const Cofactor = 4
 const CurveOrder = Cofactor * GroupOrder
 
-var GroupOrder_Int *big.Int = new(big.Int).SetBytes(common.FromHex(GroupOrder_string))
+var GroupOrder_Int *big.Int = initIntFromString(GroupOrder_string)
 var Cofactor_Int *big.Int = big.NewInt(Cofactor)
 var CurveOrder_Int *big.Int = new(big.Int).Mul(GroupOrder_Int, Cofactor_Int)
 
 const (
-	GLSEigenvalue        = 0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05
-	GLSEigenvalue_string = "0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05"
+	EndoEigenvalue        = 0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05
+	EndoEigenvalue_string = "0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05"
 )
 
-var GLSEigenvalue_Int *big.Int = new(big.Int).SetBytes(common.FromHex(GLSEigenvalue_string))
+var EndoEigenvalue_Int *big.Int = initIntFromString(EndoEigenvalue_string)
 
 // parameters a, d in twisted Edwards form ax^2 + y^2 = 1 + dx^2y^2
 
@@ -39,15 +37,15 @@ const (
 )
 
 var (
-	TwistedEdwardsD_Int *big.Int     = new(big.Int).SetBytes(common.FromHex(TwistedEdwardsD_string))
-	TwistedEdwardsD_fe  FieldElement = func() (ret FieldElement) { ret.SetInt(TwistedEdwardsD_Int); return }()
+	TwistedEdwardsD_Int *big.Int     = initIntFromString(TwistedEdwardsD_string)
+	TwistedEdwardsD_fe  FieldElement = initFieldElementFromString(TwistedEdwardsD_string)
 )
 
 // SqrtDDivA is a square root of d/a. Due to the way the bandersnatch curve was constructed, we have (sqrt(d/a) + 1)^2 == 2.
 // This number appears in coordinates of the order-2 points at inifinity and in the formulae for the endomorphism.
 const (
-	SqrtDDivA        = 37446463827641770816307242315180085052603635617490163568005256780843403514038 // Note: Not in hex
-	SqrtDDivA_string = "37446463827641770816307242315180085052603635617490163568005256780843403514038"
+	SqrtDDivA        = 37446463827641770816307242315180085052603635617490163568005256780843403514038   // Note: Not in hex
+	SqrtDDivA_string = "37446463827641770816307242315180085052603635617490163568005256780843403514038" // Note: Not in hex
 )
 
 var (
@@ -67,13 +65,13 @@ var (
 
 type CurvePointRead interface {
 	IsZero() bool
-	X_affine() FieldElement
+	X_affine() FieldElement // TODO: Consider removal
 	X_projective() FieldElement
-	Y_affine() FieldElement
+	Y_affine() FieldElement // TODO: Consider removal
 	Y_projective() FieldElement
 	Z_projective() FieldElement
-	IsAffine() bool //TODO: Consier removal
-	MakeAffine()    // TODO: Consider removal
+	IsAffine() bool // TODO: Consier removal / renaming
+	MakeAffine()    // TODO: Consider removal / renaming
 }
 
 type CurvePointWrite interface {
@@ -89,6 +87,8 @@ type CurvePoint interface {
 	CurvePointRead
 	CurvePointWrite
 }
+
+// TODO: Some of these are unused. Make consistent with Bandersnatch paper.
 
 const (
 	endo_a1        = 0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4
