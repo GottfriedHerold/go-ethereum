@@ -551,3 +551,7 @@ func (z *bsFieldElement_64) Square(x *bsFieldElement_64) {
 func (z *bsFieldElement_64) SquareEq() {
 	z.Mul(z, z)
 }
+
+func (z *bsFieldElement_64) NegEq() {
+	z.Neg(z)
+}

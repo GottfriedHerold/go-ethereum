@@ -64,7 +64,8 @@ var (
 // A CurvePoint represents a rational point on the bandersnatch curve in the correct subgroup.
 
 type CurvePointRead interface {
-	IsZero() bool
+	IsNeutralElement() bool
+	IsNeutralElement_exact() bool
 	X_affine() FieldElement // TODO: Consider removal
 	X_projective() FieldElement
 	Y_affine() FieldElement // TODO: Consider removal
@@ -72,14 +73,24 @@ type CurvePointRead interface {
 	Z_projective() FieldElement
 	IsAffine() bool // TODO: Consier removal / renaming
 	MakeAffine()    // TODO: Consider removal / renaming
+	IsAtInfinity() bool
+	IsSingular() bool
+	IsEqual(CurvePointRead) bool
+	IsEqualExact(CurvePointRead) bool
+	AffineExtended() Point_axtw
+	ExtendedTwistedEdwards() Point_xtw
 }
 
 type CurvePointWrite interface {
-	SetZero()
+	SetNeutral()
+	SetFrom(CurvePointRead)
 	Add(CurvePointRead, CurvePointRead)
+	AddEq(CurvePointRead)
 	Sub(CurvePointRead, CurvePointRead)
+	SubEq(CurvePointRead)
 	Neg(CurvePointRead)
-	Psi(CurvePointRead)
+	Endo(CurvePointRead)
+	EndoEq()
 	// ClearCofactor()
 }
 

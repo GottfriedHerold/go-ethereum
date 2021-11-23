@@ -13,7 +13,7 @@ import (
 // Ideally, closest is for the infinity norm, but 2-norm would be good as well; we do not care about optimality too much anyway;
 // While we actually solve it optimally, this is mostly because a) we easily can do so in dimension 2 and b) it makes testing a bit easier.
 
-// LLL-reduced basis for lattice L (computed with SAGE) used in GLV reduction. The basis consists of vectors (lBasis_11, lBasis_12) and (lBasis_21, lBasis_22).
+// LLL-reduced basis for lattice L (computed with SAGE) used in GLV reduction. The basis consists of the two vectors (lBasis_11, lBasis_12) and (lBasis_21, lBasis_22).
 
 // The Voronoi cell wrt infinity-norm looks like in voronoi.svg. The 6 Voronoi-relevant vectors (colored lattice points in the figure) are given by +/- lBasis_1, +/- lBasis 2 and +/-(lBasis_1 + lBasis_2).
 const (
@@ -50,13 +50,15 @@ var halfGroupOrder_Int = initIntFromString(halfGroupOrder_string)
 // infty_norm computes the max of the absolute values of x and y.
 func infty_norm(x, y *big.Int) (result *big.Int) {
 	result = big.NewInt(0)
-	if x.CmpAbs(y) > 0 { //|x| > |y|
+	if x.CmpAbs(y) > 0 { // |x| > |y|
 		result.Abs(x)
 	} else {
 		result.Abs(y)
 	}
 	return
 }
+
+// TODO: Usage of big.Int may not be the best here.
 
 // GLV_representation(t) outputs a pair u,v of big.Ints such that t*P = u*P + v*\Psi(P) for the endomorphism Psi for any P in the subgroup.
 // We choose the pair u,v such that max{|u|, |v|} is minimized.
@@ -65,7 +67,7 @@ func GLV_representation(t *big.Int) (u_final *big.Int, v_final *big.Int) {
 	// For this, we write (t,0) as alpha*lBasis_1 + beta*lBasis_2 with real-valued alpha, beta.
 	// A close lattice point to (t,0) is then given by round(alpha)*lBasis_1 + round(beta)*lBasis_2 where round(.) rounds to the nearest integer.
 	// The (preliminary, only near-optimal) result is then (t,0) - round(alpha)*lBasis_1 - round(beta)*lBasis_2
-	// The latter is equal to (alpha-round(alpha)) * lBasis_1 + (beta-round(beta))*lBasis_2
+	// The latter is equal to (alpha-round(alpha)) * lBasis_1 + (beta-round(beta)) * lBasis_2
 
 	// Now, note that (alpha, beta) = 1/det(B) * tilde(B) * (t,0) by definition, where the cofactor matrix tilde(B) = det(B)*B^{-1} is actually an integral matrix and B is the Basis matrix for lBasis_1,lBasis_2
 	// By multipying everything with det(B) == p253, we can replace rounding floats to the nearest integer and taking the difference by rounding an integer to the next multiple of p253, i.e. working modulo p253.
@@ -88,7 +90,7 @@ func GLV_representation(t *big.Int) (u_final *big.Int, v_final *big.Int) {
 	delta_alpha.Mod(delta_alpha, GroupOrder_Int)
 	delta_beta.Mod(delta_beta, GroupOrder_Int)
 
-	// subtract (p253-1)/2 again. delta_alpha and delta_beta are now in the range -halfGroupOrder .. +halfGroupOrder
+	// subtract (p253-1)/2 to undo the addition above. delta_alpha and delta_beta are now in the range -halfGroupOrder .. +halfGroupOrder
 	delta_alpha.Sub(delta_alpha, halfGroupOrder_Int)
 	delta_beta.Sub(delta_beta, halfGroupOrder_Int)
 

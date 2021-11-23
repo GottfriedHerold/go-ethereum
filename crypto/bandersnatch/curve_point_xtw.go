@@ -155,126 +155,221 @@ func (p *Point_xtw) AffineExtended() Point_axtw {
 	return Point_axtw{x: p.x, y: p.y, t: p.t}
 }
 
-// IsZero checks if the point P is the neutral element of the curve. Use IsZero_safe if you do not know a priori that is in the subgroup.
-func (P *Point_xtw) IsZero() bool {
+func (p *Point_xtw) ExtendedTwistedEdwards() Point_xtw {
+	return *p // Note that Go forces the caller to make a copy.
+}
+
+// IsNeutralElement checks if the point P is the neutral element of the curve (modulo the identification of P with P+A).
+// Use IsNeutralElement_exact if you do not want this identification.
+func (P *Point_xtw) IsNeutralElement() bool {
+
 	// NOTE: This asserts that P is in the correct subgroup or that we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
-	return P.x.IsZero()
+	if P.x.IsZero() {
+		if P.y.IsZero() {
+			// TODO: Handle error: Singular point
+			return false
+		}
+		return true
+	}
+	return false
 }
 
-// SetZero sets the Point P to the neutral element of the curve.
-func (P *Point_xtw) SetZero() {
-	*P = NeutralElement_xtw
-}
-
-// IsZero_safe tests for zero-ness even if we do not know that the point is in the subgroup. We only assume that x,y,t,z satisfy the curve equations.
+// IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
 // Returns false for singularity x==y==t==z==0
-func (P *Point_xtw) IsZero_safe() bool {
+func (P *Point_xtw) IsNeutralElement_exact() bool {
 	// We check this separately, because we want that specific behaviour on singularity.
 	if P.z.IsZero() {
-		// TODO: Check for singularity and log?
+		// TODO: Check for singularity and handle errors
 		return false
 	}
 	return P.x.IsZero() && P.t.IsZero() && P.y.IsEqual(&P.z)
 }
 
-/*
-	Note: Suffixes like _xxx or _xxa refer to the type of input point (with order output, input1 [,input2] )
-	x denote extended projective,
-	a denotes extended affine
-*/
-
-// https://www.hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#addition-add-2008-hwcd, due to Hisil–Wong–Carter–Dawson 2008, http://eprint.iacr.org/2008/522, Section 3.1.
-func (out *Point_xtw) add_xxx(input1, input2 *Point_xtw) {
-	var A, B, C, D, E, F, G, H FieldElement // We follow the notation of the link above
-
-	A.Mul(&input1.x, &input2.x) // A = X1 * X2
-	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
-	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
-	D.Mul(&input1.z, &input2.z)  // D = Z1 * Z2
-	E.Add(&input1.x, &input1.y)
-	F.Add(&input2.x, &input2.y) // F serves as temporary
-	E.MulEq(&F)
-	E.SubEq(&A)
-	E.SubEq(&B)   // E = (X1 + Y1) * (X2 + Y2) - A - B == X1*Y2 + Y1*X2
-	F.Sub(&D, &C) // F = D - C
-	G.Add(&D, &C) // G = D + C
-
-	A.multiply_by_five()
-	H.Add(&B, &A) // H = B + 5X1 * X2 = Y1*Y2 - a*X1*X2  (a=-5 is a parameter of the curve)
-
-	out.x.Mul(&E, &F) // X3 = E * F
-	out.y.Mul(&G, &H) // Y3 = G * H
-	out.t.Mul(&E, &H) // T3 = E * H
-	out.z.Mul(&F, &G) // Z3 = F * G
+// SetNeutral sets the Point P to the neutral element of the curve.
+func (P *Point_xtw) SetNeutral() {
+	*P = NeutralElement_xtw
 }
 
-func (out *Point_xtw) double_xx(input1 *Point_xtw) {
-	// TODO: Use https://www.hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd.
-	// Note we need to ensure that this formula gives the same result as add_xxx (modulo ax^2 + y^2 = z^2 + dt^2 and a global sign), even for z==0
-	out.add_xxx(input1, input1)
+// clearCofactor4 multiplies a point (which need not be in the subgroup) and multiplies it by the cofactor 4 to ensure the result is in the subgroup.
+func (p *Point_xtw) clearCofactor4() {
+	p.double_tt(p)
+	p.double_tt(p)
 }
 
-func (out *Point_xtw) neg_xx(input1 *Point_xtw) {
-	out.x = input1.x
-	out.y.Neg(&input1.y)
-	out.t.Neg(&input1.t)
-	out.z = input1.z
+// clearCofactor4 multiplies a point (which need not be in the subgroup) and multiplies it by 2 to ensure the result is in the subgroup. (The cofactor is 4, but the cofactor group is Z/2 x Z/2, so this is sufficient.)
+func (p *Point_xtw) clearCofactor2() {
+	p.double_tt(p)
 }
 
-func (out *Point_xtw) sub_xxx(input1, input2 *Point_xtw) {
-	out.neg_xx(input2)
-	out.add_xxx(out, input1)
+// IsSingular checks whether the point is singular (x==y==0, indeed most likely x==y==t==z==0). Singular points must never appear if the library is used correctly. They can appear by
+// a) performing operations on points that are not in the correct subgroup
+// b) zero-initialized points are singular (Go lacks constructors to fix that).
+// The reason why we check x==y==0 and do not check t,z is due to what happens if we perform mixed additions.
+func (p *Point_xtw) IsSingular() bool {
+	return p.x.IsZero() && p.y.IsZero()
 }
 
-// is_equal_xx checks whether two points in the subgroup are equal. On the p523+A subgroup, it checks for equality modulo the affine order-2 point.
-func (p1 *Point_xtw) is_equal_xx(p2 *Point_xtw) bool {
-	var temp1, temp2 FieldElement
-	// We check whether x1/y1 == x2/y2. Note that the map Curve -> Field given by x/y is 2:1 with preimages of the form {P, P+A} for the affine 2 torsion point A.
-	temp1.Mul(&p1.x, &p2.y)
-	temp2.Mul(&p1.y, &p2.x)
-	// TODO: Check special case temp1 == 0 and ensure neither input is singularity.
-	return temp1.IsEqual(&temp2)
-}
-
-func (p *Point_xtw) makeAffine_x() {
-	var temp FieldElement
-	if p.z.IsZero() {
-		panic("Trying to make point at infinity or singular point affine")
+func (p *Point_xtw) Add(x CurvePointRead, y CurvePointRead) {
+	switch x_real := x.(type) {
+	case *Point_xtw:
+		switch y_real := y.(type) {
+		case *Point_xtw:
+			p.add_ttt(x_real, y_real)
+		default:
+			var y_temp Point_xtw
+			y_temp.SetFrom(y_real)
+			p.add_ttt(x_real, &y_temp)
+		}
+	default: // for x
+		var x_temp Point_xtw
+		x_temp.SetFrom(x_real)
+		switch y_real := y.(type) {
+		case *Point_xtw:
+			p.add_ttt(&x_temp, y_real)
+		default:
+			var y_temp Point_xtw
+			y_temp.SetFrom(y_real)
+			p.add_ttt(&x_temp, &y_temp)
+		}
 	}
-	temp.Inv(&p.z)
-	p.x.MulEq(&temp)
-	p.y.MulEq(&temp)
-	p.t.MulEq(&temp)
-	p.z.SetOne()
 }
 
-// is_equal_safe_xx checks whether p1 == p2. This works for all rational points (including points at infinity), not only those in the subgroup. It does *not* identify P with P+A
-func (p1 *Point_xtw) is_equal_safe_xx(p2 *Point_xtw) bool {
-	var temp1, temp2 FieldElement
-	if p1.z.IsZero() {
-		if !p2.z.IsZero() {
+func (p *Point_xtw) Sub(x CurvePointRead, y CurvePointRead) {
+	switch x_real := x.(type) {
+	case *Point_xtw:
+		switch y_real := y.(type) {
+		case *Point_xtw:
+			p.sub_ttt(x_real, y_real)
+		default:
+			var y_temp Point_xtw
+			y_temp.SetFrom(y_real)
+			p.sub_ttt(x_real, &y_temp)
+		}
+	default: // for x
+		var x_temp Point_xtw
+		x_temp.SetFrom(x_real)
+		switch y_real := y.(type) {
+		case *Point_xtw:
+			p.sub_ttt(&x_temp, y_real)
+		default:
+			var y_temp Point_xtw
+			y_temp.SetFrom(y_real)
+			p.sub_ttt(&x_temp, &y_temp)
+		}
+	}
+}
+
+func (p *Point_xtw) Neg(from CurvePointRead) {
+	switch from_real := from.(type) {
+	case *Point_xtw:
+		p.neg_tt(from_real)
+	default:
+		p.SetFrom(from_real)
+		p.NegEq()
+	}
+}
+
+func (p *Point_xtw) Endo(from CurvePointRead) {
+	switch from_real := from.(type) {
+	case *Point_xtw:
+		p.computeEndomorphism_tt(from_real)
+	case *Point_axtw:
+		p.computeEndomorphism_ta(from_real)
+	default:
+		p.SetFrom(from)
+		p.computeEndomorphism_tt(p)
+	}
+}
+
+// Endo_safe computes the GLV endomorphism and works for all points.
+func (output *Point_xtw) Endo_safe(input CurvePointRead) {
+	if input.IsSingular() {
+		// TODO: Handle error
+		*output = Point_xtw{} // NaN-like behaviour.
+	} else if input.IsAtInfinity() {
+		*output = orderTwoPoint_xtw
+	} else {
+		output.Endo(input)
+	}
+}
+
+func (p *Point_xtw) IsAtInfinity() bool {
+	if p.z.IsZero() {
+		if p.t.IsZero() {
+			// TODO: Handle error: p is probably singularity
 			return false
 		}
-		// TODO: Check for singularity?
-		// z == 0 implies x == 0 and t,y non-zero, so p1.x == p2.x == p1.z == p2.z == 0
-		temp1.Mul(&p1.y, &p2.t)
-		temp2.Mul(&p1.t, &p2.y)
+		return true
+	}
+	return false
+}
+
+func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
+	switch other_real := other.(type) {
+	case *Point_xtw:
+		return p.is_equal_tt(other_real)
+	case *Point_axtw:
+		return p.is_equal_ta(other_real)
+	default:
+		if p.IsSingular() || other.IsSingular() {
+			// TODO: Error handling
+			return false
+		}
+		var temp1, temp2 FieldElement
+		var temp_fe FieldElement = other_real.Y_projective()
+		temp1.Mul(&p.x, &temp_fe)
+		temp_fe = other_real.X_projective()
+		temp2.Mul(&p.y, &temp_fe)
 		return temp1.IsEqual(&temp2)
 	}
-	if p2.z.IsZero() {
-		return false // p1.z != 0, because these cases were already done above.
-	}
-	// p1, p2 both have z!=0. We need to check both x1/z1 == x2/z2 and y1/z1 == y2/z2
-	temp1.Mul(&p1.x, &p2.z)
-	temp2.Mul(&p1.z, &p2.x)
-	if !temp1.IsEqual(&temp2) {
+}
+
+func (p *Point_xtw) IsEqualExact(other CurvePointRead) bool {
+	if p.IsSingular() || other.IsSingular() {
+		// TODO: Error handling
 		return false
 	}
-	// Note that we actually know that y1/z1 == +/- y2/z2, as the curve equations only has 2 solutions for given y.
-	temp1.Mul(&p1.y, &p2.z)
-	temp2.Mul(&p1.z, &p2.y)
-	return temp1.IsEqual(&temp2)
+	switch other_real := other.(type) {
+	case *Point_xtw:
+		return p.is_equal_exact_tt(other_real)
+	case *Point_axtw:
+		return p.is_equal_exact_ta(other_real)
+	default:
+		other_temp := other.ExtendedTwistedEdwards()
+		return p.is_equal_exact_tt(&other_temp)
+	}
+}
+
+func (p *Point_xtw) EndoEq() {
+	p.computeEndomorphism_tt(p)
+}
+
+func (p *Point_xtw) NegEq() {
+	p.y.NegEq()
+	p.t.NegEq()
+}
+
+func (p *Point_xtw) AddEq(x CurvePointRead) {
+	p.Add(p, x)
+}
+
+func (p *Point_xtw) SubEq(x CurvePointRead) {
+	p.Sub(p, x)
+}
+
+func (p *Point_xtw) SetFrom(input CurvePointRead) {
+	switch from_real := input.(type) {
+	case *Point_xtw:
+		*p = *from_real
+	default:
+		p.x = from_real.X_projective()
+		p.y = from_real.Y_projective()
+		p.z = from_real.Z_projective()
+		p.t.Mul(&p.x, &p.y)
+		p.x.MulEq(&p.z)
+		p.y.MulEq(&p.z)
+		p.z.SquareEq()
+	}
 }
 
 // Note: This does NOT verify that the point is in the correct subgroup. Currently prints on failure (as it is only used in testing for now anyway)
@@ -305,83 +400,4 @@ func (p *Point_xtw) verify_Point_on_Curve() bool {
 		return false
 	}
 	return true
-}
-
-// This checks whether the X/Z coordinate may be in the subgroup.
-func (p *Point_xtw) legendre_check_point() bool {
-	var temp FieldElement
-	/// p.MakeAffine()  -- removed in favour of homogenous formula
-	temp.Square(&p.x)
-	temp.multiply_by_five()
-	var zz FieldElement
-	zz.Square(&p.z)
-	temp.AddEq(&zz) // temp = z^2 + 5x^2 = z^2-ax^2
-	tempInt := temp.ToInt()
-	result := big.Jacobi(tempInt, BaseFieldSize)
-	if result == 0 {
-		panic("z^2-ax^2 is 0") // Cannot happen, because a is a non-square.
-	}
-	return result > 0
-}
-
-// clearCofactor4 multiplies a point (which need not be in the subgroup) and multiplies it by the cofactor 4 to ensure the result is in the subgroup.
-func (p *Point_xtw) clearCofactor4() {
-	p.double_xx(p)
-	p.double_xx(p)
-}
-
-// clearCofactor4 multiplies a point (which need not be in the subgroup) and multiplies it by 2 to ensure the result is in the subgroup. (The cofactor is 4, but the cofactor group is Z/2 x Z/2, so this is sufficient.)
-func (p *Point_xtw) clearCofactor2() {
-	p.double_xx(p)
-}
-
-// IsSingular checks whether the point is singular (x==y==t==z==0). Singular points must never appear if the library is used correctly. They can appear by
-// a) performing operations on points that are not in the correct subgroup
-// b) zero-initialized points are singular (Go lacks constructors to fix that).
-func (p *Point_xtw) IsSingular() bool {
-	return p.z.IsZero() && p.x.IsZero() && p.y.IsZero() && p.t.IsZero()
-}
-
-// psi_xx computes the GLV Endomorphism (degree-2 isogeny with kernel {Neutral, Affine oder-2}) on a given input point. It is valid unless input is at infinity.
-func (output *Point_xtw) psi_xx(input *Point_xtw) {
-	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
-	if input.x.IsZero() {
-		// Since we assume to be on the p253 subgroup, we know that the input is actuall the neutral element, so the output is the neutral element.
-		// Note that for the other point with x==0 (i.e. the affine order-2 point), outputting the neutral element is actually correct.
-		// To avoid problems, we verify that the input is not singular.
-		if input.IsSingular() {
-			// TODO: Panic / Log? We set the output to the input to maintain the propery that Operation(singularity) == singularity, i.e. singularity has NaN-like behaviour.
-			*output = *input
-			return
-		}
-		*output = NeutralElement_xtw
-		return
-	}
-	var bzz, yy, A, B, C, D FieldElement
-	bzz.Square(&input.z)
-	yy.Square(&input.y)
-	A.Sub(&bzz, &yy)
-	A.MulEq(&endo_c_fe) // A = c*(z^2 - y^2)
-
-	bzz.MulEq(&endo_b_fe)
-	B.Sub(&yy, &bzz) // B = y^2 - bz^2
-
-	C.Add(&yy, &bzz)
-	C.MulEq(&endo_b_fe) // C = b(y^2 + bz^2)
-
-	D.Mul(&input.t, &input.z) // D = t*z == x*y
-
-	output.x.Mul(&A, &B)
-	output.y.Mul(&C, &D)
-	output.t.Mul(&A, &C)
-	output.z.Mul(&B, &D)
-}
-
-// psi_xx_safe computes the GLV endomorphism and works for all points.
-func (output *Point_xtw) psi_xx_safe(input *Point_xtw) {
-	if input.z.IsZero() && !input.IsSingular() {
-		*output = orderTwoPoint_xtw
-	} else {
-		output.psi_xx(input)
-	}
 }

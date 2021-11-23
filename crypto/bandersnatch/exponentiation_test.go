@@ -10,7 +10,7 @@ func TestSimpleExponentiation(t *testing.T) {
 	const iterations = 10
 	var temp1, temp2, temp3, temp4 Point_xtw
 	temp1.exp_naive_xx(&example_generator_xtw, GroupOrder_Int)
-	if !temp1.IsZero_safe() {
+	if !temp1.IsNeutralElement_exact() {
 		t.Fatal("Either naive exponentiation is wrong or example point not in subgroup")
 	}
 	var drng *rand.Rand = rand.New(rand.NewSource(1024))
@@ -20,16 +20,16 @@ func TestSimpleExponentiation(t *testing.T) {
 
 	temp1 = make_random_twedwards_full(drng)
 	temp2.exp_naive_xx(&temp1, exp2) // exponent is 1
-	if !temp2.is_equal_safe_xx(&temp1) {
+	if !temp2.is_equal_exact_tt(&temp1) {
 		t.Error("1 * P != P for naive exponentiation")
 	}
 	temp2.exp_naive_xx(&temp1, exp1) // exponent is 0
-	if !temp2.is_equal_safe_xx(&NeutralElement_xtw) {
+	if !temp2.is_equal_exact_tt(&NeutralElement_xtw) {
 		t.Error("0 * P != Neutral element for naive exponentiation")
 	}
 	temp2.exp_naive_xx(&temp1, exp3)
-	temp1.neg_xx(&temp1)
-	if !temp1.is_equal_safe_xx(&temp2) {
+	temp1.neg_tt(&temp1)
+	if !temp1.is_equal_exact_tt(&temp2) {
 		t.Error("-1 * P != -P for naive exponentiation")
 	}
 
@@ -37,21 +37,21 @@ func TestSimpleExponentiation(t *testing.T) {
 	for i := 0; i < iterations; i++ {
 		p1 = make_random_twedwards_full(drng)
 		p2 = make_random_twedwards_full(drng)
-		p3.add_xxx(&p1, &p2)
+		p3.add_ttt(&p1, &p2)
 		exp1.Rand(drng, CurveOrder_Int)
 		exp2.Rand(drng, CurveOrder_Int)
 		exp3.Add(exp1, exp2)
 		temp1.exp_naive_xx(&p1, exp1)
 		temp2.exp_naive_xx(&p2, exp1)
 		temp3.exp_naive_xx(&p3, exp1)
-		temp4.add_xxx(&temp1, &temp2)
-		if !temp3.is_equal_safe_xx(&temp4) {
+		temp4.add_ttt(&temp1, &temp2)
+		if !temp3.is_equal_exact_tt(&temp4) {
 			t.Error("a * (P+Q) != a*P + a*Q for naive exponentiation")
 		}
 		temp2.exp_naive_xx(&p1, exp2)
 		temp3.exp_naive_xx(&p1, exp3)
-		temp4.add_xxx(&temp1, &temp2)
-		if !temp3.is_equal_safe_xx(&temp4) {
+		temp4.add_ttt(&temp1, &temp2)
+		if !temp3.is_equal_exact_tt(&temp4) {
 			t.Error("(a+b) * P != a*P + b*P for naive exponentiation")
 		}
 	}
@@ -71,7 +71,7 @@ func TestQuotientGroup(t *testing.T) {
 		if temp.IsSingular() {
 			t.Fatal("p253 * random point resulted in singularity")
 		}
-		if temp.IsZero_safe() {
+		if temp.IsNeutralElement_exact() {
 			isN = 1
 			NumN++
 			if !LegCheck {
@@ -79,7 +79,7 @@ func TestQuotientGroup(t *testing.T) {
 			}
 		} else if !temp.z.IsZero() {
 			// temp must be the affine order two point.
-			if !temp.is_equal_safe_xx(&orderTwoPoint_xtw) {
+			if !temp.is_equal_exact_tt(&orderTwoPoint_xtw) {
 				t.Fatal("p253 * random point is affine and not neutral, but does not compare equal to the known order-2 point.")
 			}
 			if !LegCheck {
@@ -109,7 +109,7 @@ func TestQuotientGroup(t *testing.T) {
 			if !temp.y.IsZero() {
 				t.Fatal("p253 * random point resulted in point with z==0, but y!=0. These do not exist on the curve.")
 			}
-			if !(temp.is_equal_safe_xx(&exceptionalPoint_1) || temp.is_equal_safe_xx(&exceptionalPoint_2)) {
+			if !(temp.is_equal_exact_tt(&exceptionalPoint_1) || temp.is_equal_exact_tt(&exceptionalPoint_2)) {
 				t.Fatal("p253 * random point is non-affine, but does not compare equal to the known exceptional points.")
 			}
 			if LegCheck {

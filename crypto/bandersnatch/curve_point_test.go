@@ -23,4 +23,7 @@ func TestGlobalParameter(t *testing.T) {
 
 func TestInterfaces(t *testing.T) {
 	var _ CurvePointRead = &Point_xtw{}
+	var _ CurvePointWrite = &Point_xtw{}
+	var _ CurvePointRead = &Point_axtw{}
+	var _ CurvePointWrite = &Point_axtw{}
 }
