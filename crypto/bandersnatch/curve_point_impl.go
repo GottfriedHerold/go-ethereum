@@ -12,8 +12,8 @@ import (
 */
 
 func (out *Point_xtw) neg_tt(input1 *Point_xtw) {
-	out.x = input1.x
-	out.y.Neg(&input1.y)
+	out.x.Neg(&input1.x)
+	out.y = input1.y
 	out.t.Neg(&input1.t)
 	out.z = input1.z
 }

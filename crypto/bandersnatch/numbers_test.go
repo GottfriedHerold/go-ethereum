@@ -5,11 +5,11 @@ This file just contains decimal constants that are useful to recognize when debu
 */
 
 const (
-	// Note: Square root sign choice is consistent.
-	// a/d + d/a == 6
-	// a^2/d^2 + d^2/a^2 == 34
-	// In fact: sqrt(a/d) = sqrt(2) - 1
-
+// Note: Square root sign choice is consistent.
+// a/d + d/a == 6
+// a^2/d^2 + d^2/a^2 == 34
+// In fact: sqrt(a/d) = sqrt(2) - 1
+/*
 	c_FieldSize            = 52435875175126190479447740508185965837690552500527637822603658699938581184513
 	c_minusOne             = 52435875175126190479447740508185965837690552500527637822603658699938581184512
 	c_A2DivD2              = 22565310644434464519342756791512671907971345094866777587369846929326388492190 // a^2 / d^2
@@ -46,4 +46,5 @@ const (
 	c_endoa2Minusa1        = 6930289652147304637552539061375485556540504937530723926016                    // endoa2-endoa1
 	c_endoa2Minusa1SHR     = 24621334845233294563913301052250963453149186                                  // endoa2-endoa1 / (2**48) == 2*15132376222941642752^3
 	c_endo_c               = 49199877423542878313146170939139662862850515542392585932876811575731455068989
+*/
 )
