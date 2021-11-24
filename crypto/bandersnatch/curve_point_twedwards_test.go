@@ -218,11 +218,3 @@ func TestPsi(t *testing.T) {
 		}
 	}
 }
-
-func TestAdd(t *testing.T) {
-	var x Point_xtw = example_generator_xtw
-	// var x_interface CurvePointRead = x
-	var y Point_xtw = example_generator_xtw
-	var z Point_xtw
-	z.Add(&x, &y)
-}

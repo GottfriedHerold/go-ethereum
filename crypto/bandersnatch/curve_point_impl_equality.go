@@ -73,9 +73,9 @@ func (p1 *Point_xtw) is_equal_exact_tt(p2 *Point_xtw) bool {
 		if !p2.z.IsZero() {
 			return false
 		}
-		// z == 0 implies x == 0 and t,y non-zero, so p1.x == p2.x == p1.z == p2.z == 0
-		temp1.Mul(&p1.y, &p2.t)
-		temp2.Mul(&p1.t, &p2.y)
+		// z == 0 implies y == 0 and t,x non-zero, so p1.y == p2.y == p1.z == p2.z == 0
+		temp1.Mul(&p1.x, &p2.t)
+		temp2.Mul(&p1.t, &p2.x)
 		return temp1.IsEqual(&temp2)
 	}
 	if p2.z.IsZero() {

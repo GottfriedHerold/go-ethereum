@@ -42,13 +42,13 @@ func (P *Point_axtw) Z_projective() FieldElement {
 	return FieldElementOne
 }
 
-func (P *Point_axtw) MakeAffine() {
-	// Do nothing.
-}
+// func (P *Point_axtw) MakeAffine() {
+//	// Do nothing.
+//}
 
-func (p *Point_axtw) IsAffine() bool {
-	return true
-}
+// func (p *Point_axtw) IsAffine() bool {
+// 	return true
+// }
 
 func (p *Point_axtw) AffineExtended() Point_axtw {
 	return Point_axtw{x: p.x, y: p.y, t: p.t}

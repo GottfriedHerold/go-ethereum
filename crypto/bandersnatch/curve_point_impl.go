@@ -30,7 +30,7 @@ func (p *Point_xtw) legendre_check_point() bool {
 	tempInt := temp.ToInt()
 	result := big.Jacobi(tempInt, BaseFieldSize)
 	if result == 0 {
-		panic("z^2-ax^2 is 0") // Cannot happen, because a is a non-square.
+		panic("Jacobi symbol of z^2-ax^2 is 0") // Cannot happen, because a is a non-square.
 	}
 	return result > 0
 }

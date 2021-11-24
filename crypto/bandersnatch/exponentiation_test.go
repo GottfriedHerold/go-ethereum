@@ -119,11 +119,11 @@ func TestQuotientGroup(t *testing.T) {
 			temp.x.MulEq(&temp.t)
 			temp.t.SetOne()
 			// temp.y == temp.z == 0 anyway.
-			if temp.x.IsEqual(&exceptionalPoint_1_xtw.x) && temp.y.IsEqual(&exceptionalPoint_1_xtw.y) && temp.t.IsEqual(&exceptionalPoint_1_xtw.t) && temp.z.IsEqual(&exceptionalPoint_1_xtw.z) {
+			if temp.is_equal_exact_tt(&exceptionalPoint_1_xtw) {
 				isE1 = 1
 				NumE1++
 			}
-			if temp.x.IsEqual(&exceptionalPoint_2_xtw.x) && temp.y.IsEqual(&exceptionalPoint_2_xtw.y) && temp.t.IsEqual(&exceptionalPoint_2_xtw.t) && temp.z.IsEqual(&exceptionalPoint_2_xtw.z) {
+			if temp.is_equal_exact_tt(&exceptionalPoint_2_xtw) {
 				isE2 = 1
 				NumE2++
 			}
