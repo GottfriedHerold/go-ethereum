@@ -100,9 +100,9 @@ func Test_neg_ttt(t *testing.T) {
 		case 1:
 			p1 = orderTwoPoint_xtw
 		case 2:
-			p1 = exceptionalPoint_1
+			p1 = exceptionalPoint_1_xtw
 		case 3:
-			p1 = exceptionalPoint_2
+			p1 = exceptionalPoint_2_xtw
 		default:
 			p1 = make_random_twedwards_full(drng)
 		}
@@ -119,10 +119,10 @@ func TestSingularAddition(t *testing.T) {
 
 	var temp1 Point_xtw = make_random_twedwards_full(drng)
 	var temp2, temp3, temp4, temp5 Point_xtw
-	temp2.add_ttt(&temp1, &exceptionalPoint_1)
+	temp2.add_ttt(&temp1, &exceptionalPoint_1_xtw)
 	temp3.add_ttt(&temp1, &temp2)
 	temp4.add_ttt(&temp1, &temp1)
-	temp5.add_ttt(&temp4, &exceptionalPoint_1)
+	temp5.add_ttt(&temp4, &exceptionalPoint_1_xtw)
 	if temp1.IsSingular() || temp2.IsSingular() || temp4.IsSingular() || temp5.IsSingular() {
 		t.Fatal("Singular point after Point addition")
 	}
@@ -183,12 +183,12 @@ func TestPsi(t *testing.T) {
 			t.Fatal("Psi is not homomorphic for sum = affine-order-2")
 		}
 
-		result1.Endo_safe(&exceptionalPoint_1)
+		result1.Endo_safe(&exceptionalPoint_1_xtw)
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Psi(E1) != affine-order-2")
 		}
 		temp2 = make_random_twedwards_full(drng)
-		temp1.sub_ttt(&exceptionalPoint_1, &temp2)
+		temp1.sub_ttt(&exceptionalPoint_1_xtw, &temp2)
 		if temp1.IsSingular() {
 			t.Fatal("Unexpected singularity encountered")
 		}
@@ -198,14 +198,14 @@ func TestPsi(t *testing.T) {
 		if result1.IsSingular() || result2.IsSingular() || temp3.IsSingular() {
 			t.Fatal("Unexpected singularity encountered")
 		}
-		if !temp3.is_equal_exact_tt(&exceptionalPoint_1) {
+		if !temp3.is_equal_exact_tt(&exceptionalPoint_1_xtw) {
 			t.Fatal("Associative Law fails when sum is E1")
 		}
 		result1.add_ttt(&result1, &result2) // requires add_xxx to be safe enough, which it is.
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Homomorphic properties of Psi unsatisfied when sum is E1")
 		}
-		result1.Endo_safe(&exceptionalPoint_2)
+		result1.Endo_safe(&exceptionalPoint_2_xtw)
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Psi(E2) != affine-order-2 point")
 		}

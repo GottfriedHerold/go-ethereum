@@ -26,4 +26,5 @@ func TestInterfaces(t *testing.T) {
 	var _ CurvePointWrite = &Point_xtw{}
 	var _ CurvePointRead = &Point_axtw{}
 	var _ CurvePointWrite = &Point_axtw{}
+	var _ CurvePointRead = &Point_efgh{}
 }

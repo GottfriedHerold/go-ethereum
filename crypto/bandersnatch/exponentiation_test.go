@@ -109,7 +109,7 @@ func TestQuotientGroup(t *testing.T) {
 			if !temp.y.IsZero() {
 				t.Fatal("p253 * random point resulted in point with z==0, but y!=0. These do not exist on the curve.")
 			}
-			if !(temp.is_equal_exact_tt(&exceptionalPoint_1) || temp.is_equal_exact_tt(&exceptionalPoint_2)) {
+			if !(temp.is_equal_exact_tt(&exceptionalPoint_1_xtw) || temp.is_equal_exact_tt(&exceptionalPoint_2_xtw)) {
 				t.Fatal("p253 * random point is non-affine, but does not compare equal to the known exceptional points.")
 			}
 			if LegCheck {
@@ -119,11 +119,11 @@ func TestQuotientGroup(t *testing.T) {
 			temp.x.MulEq(&temp.t)
 			temp.t.SetOne()
 			// temp.y == temp.z == 0 anyway.
-			if temp.x.IsEqual(&exceptionalPoint_1.x) && temp.y.IsEqual(&exceptionalPoint_1.y) && temp.t.IsEqual(&exceptionalPoint_1.t) && temp.z.IsEqual(&exceptionalPoint_1.z) {
+			if temp.x.IsEqual(&exceptionalPoint_1_xtw.x) && temp.y.IsEqual(&exceptionalPoint_1_xtw.y) && temp.t.IsEqual(&exceptionalPoint_1_xtw.t) && temp.z.IsEqual(&exceptionalPoint_1_xtw.z) {
 				isE1 = 1
 				NumE1++
 			}
-			if temp.x.IsEqual(&exceptionalPoint_2.x) && temp.y.IsEqual(&exceptionalPoint_2.y) && temp.t.IsEqual(&exceptionalPoint_2.t) && temp.z.IsEqual(&exceptionalPoint_2.z) {
+			if temp.x.IsEqual(&exceptionalPoint_2_xtw.x) && temp.y.IsEqual(&exceptionalPoint_2_xtw.y) && temp.t.IsEqual(&exceptionalPoint_2_xtw.t) && temp.z.IsEqual(&exceptionalPoint_2_xtw.z) {
 				isE2 = 1
 				NumE2++
 			}

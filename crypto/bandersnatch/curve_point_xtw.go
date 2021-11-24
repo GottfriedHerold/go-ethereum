@@ -78,13 +78,9 @@ var (
 // These are the three points of order 2 that we can represent with extended twisted coordinates. None of these is in the p253-subgroup, of course.
 // Although we do not need or use this, note that SqrtDDivA_fe := sqrt(d/a) == sqrt(2) - 1 due to the way the bandersnatch curve was constructed.
 var (
-	orderTwoPoint_xtw  Point_xtw = Point_xtw{x: FieldElementZero, y: FieldElementMinusOne, t: FieldElementZero, z: FieldElementOne}
-	exceptionalPoint_1 Point_xtw = Point_xtw{x: SqrtDDivA_fe, y: bsFieldElement_64_zero, t: FieldElementOne, z: FieldElementZero}
-	exceptionalPoint_2 Point_xtw = func() (ret Point_xtw) {
-		ret = exceptionalPoint_1
-		ret.x.Neg(&ret.x)
-		return
-	}()
+	orderTwoPoint_xtw      Point_xtw = Point_xtw{x: FieldElementZero, y: FieldElementMinusOne, t: FieldElementZero, z: FieldElementOne}
+	exceptionalPoint_1_xtw Point_xtw = Point_xtw{x: SqrtDDivA_fe, y: FieldElementZero, t: FieldElementOne, z: FieldElementZero}
+	exceptionalPoint_2_xtw Point_xtw = Point_xtw{x: SqrtDDivA_fe, y: FieldElementZero, t: FieldElementMinusOne, z: FieldElementZero}
 )
 
 // X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates.

@@ -12,8 +12,8 @@ package bandersnatch
 func (output *Point_xtw) computeEndomorphism_tt(input *Point_xtw) {
 	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
 	if input.x.IsZero() {
-		// Since we assume to be on the p253 subgroup, we know that the input is actuall the neutral element, so the output is the neutral element.
-		// Note that for the other point with x==0 (i.e. the affine order-2 point), outputting the neutral element is actually correct.
+		// Since we assume to be on the p253 subgroup/identify P = P+A, we know that the input is actually the neutral element, so the output is the neutral element.
+		// Note that for the other point with x==0 (i.e. the affine order-2 point A), outputting the neutral element is actually correct even without the identification.
 		// To avoid problems, we verify that the input is not singular.
 		if input.IsSingular() {
 			// TODO: Panic / Log? We set the output to the input to maintain the propery that Operation(singularity) == singularity, i.e. singularity has NaN-like behaviour.

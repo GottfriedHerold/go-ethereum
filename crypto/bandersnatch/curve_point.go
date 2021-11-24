@@ -71,8 +71,8 @@ type CurvePointRead interface {
 	Y_affine() FieldElement // TODO: Consider removal
 	Y_projective() FieldElement
 	Z_projective() FieldElement
-	IsAffine() bool // TODO: Consier removal / renaming
-	MakeAffine()    // TODO: Consider removal / renaming
+	// IsAffine() bool // TODO: Consier removal / renaming
+	// MakeAffine()    // TODO: Consider removal / renaming
 	IsAtInfinity() bool
 	IsSingular() bool
 	IsEqual(CurvePointRead) bool
