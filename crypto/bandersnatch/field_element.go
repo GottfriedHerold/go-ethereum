@@ -105,3 +105,4 @@ var (
 
 	FieldElementMinusOne = bsFieldElement_64_minusone
 )
+

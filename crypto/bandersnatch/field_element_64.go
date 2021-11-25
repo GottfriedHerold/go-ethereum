@@ -3,7 +3,9 @@ package bandersnatch
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"math/bits"
 	"math/rand"
@@ -418,7 +420,7 @@ func (z *bsFieldElement_64) SetInt(v *big.Int) {
 	z.words = intTouintarray(w)
 }
 
-// If z represents a value that can be represented by a uint64, return is (an OK = true), otherwise set OK to false
+// If z represents a value that can be represented by a uint64, returns it (and err == false), otherwise set err to false
 func (z *bsFieldElement_64) ToUint64() (result uint64, err bool) {
 	temp := z.undoMontgomery()
 	result = temp[0]
@@ -426,7 +428,7 @@ func (z *bsFieldElement_64) ToUint64() (result uint64, err bool) {
 	return
 }
 
-// Sets z to the given value
+// Sets z to the given value of type uint64
 func (z *bsFieldElement_64) SetUInt64(value uint64) {
 	// Set z to value/2^256 (due to Montgomery Form):
 	z.words[0] = value
@@ -525,6 +527,55 @@ func (z *bsFieldElement_64) IsEqual(x *bsFieldElement_64) bool {
 func (z *bsFieldElement_64) Format(s fmt.State, ch rune) {
 	z.Normalize()
 	z.ToInt().Format(s, ch)
+}
+
+type PrefixBits byte
+
+var ErrPrefixDoesNotFit error = errors.New("while trying to serialize a field element with a prefix, the prefix did not fit, because the number was too large")
+
+func (z *bsFieldElement_64) SerializeWithPrefix(output io.Writer, prefix PrefixBits, prefix_length uint8, byteOrder binary.ByteOrder) (bytes_written int, err error) {
+	var low_endian_words [4]uint64 = z.undoMontgomery()
+	bytes_written = 0
+	if prefix_length > 8 {
+		err = errors.New("serializeWithPrefix: Prefix length is larger than 8")
+		return
+	}
+	var prefix_8 byte = byte(prefix)
+	if prefix_8&(0xFF>>prefix_length) != 0 {
+		err = errors.New("serializeWithPrefix: prefix has bits is positions that are not than allowed by prefix_length")
+		return
+	}
+	if bits.LeadingZeros64(low_endian_words[3]) < int(prefix_length) {
+		err = ErrPrefixDoesNotFit
+		return
+	}
+
+	low_endian_words[3] |= uint64(prefix_8) << 56
+	var buf []byte = make([]byte, 8)
+	var written_now int
+
+	if byteOrder == binary.BigEndian {
+		for i := int(3); i >= 0; i-- {
+			byteOrder.PutUint64(buf, low_endian_words[i])
+			written_now, err = output.Write(buf)
+			bytes_written += written_now
+			if err != nil {
+				return
+			}
+		}
+	} else if byteOrder == binary.LittleEndian {
+		for i := 0; i < 4; i++ {
+			byteOrder.PutUint64(buf, low_endian_words[i])
+			written_now, err = output.Write(buf)
+			bytes_written += written_now
+			if err != nil {
+				return
+			}
+		}
+	} else {
+		err = errors.New("serializeWithPrefix: Unrecognized byte order. You must use either LittleEndian or BigEndian from the encoding/binary standard library")
+	}
+	return
 }
 
 func (z *bsFieldElement_64) String() string {
