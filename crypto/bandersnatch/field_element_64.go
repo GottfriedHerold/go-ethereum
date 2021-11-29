@@ -30,6 +30,19 @@ const (
 	mdoubled_64_3
 )
 
+// 1/2 * (BaseFieldSize-1), precomputed
+
+const (
+	mhalved = (BaseFieldSize_untyped - 1) / 2
+)
+
+const (
+	mhalved_64_0 = (mhalved >> (iota * 64)) & 0xFFFFFFFF_FFFFFFFF
+	mhalved_64_1
+	mhalved_64_2
+	mhalved_64_3
+)
+
 // 2^512 mod BaseFieldSize. This is usedful for converting to/from montgomery form.
 const (
 	rsquared_untyped = 0x748d9d99f59ff1105d314967254398f2b6cedcb87925c23c999e990f3f29c6d
@@ -90,24 +103,35 @@ var bsFieldElement_64_r bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{0
 // Change the representation of z to restore the invariant that z.words + BaseFieldSize must not overflow.
 func (z *bsFieldElement_64) maybe_reduce_once() {
 	var borrow uint64
+	// Note: if z.words[3] == m_64_3, we may or may not be able to reduce, depending on the other words. At any rate, we do not really need to.
 	if z.words[3] > m_64_3 {
 		z.words[0], borrow = bits.Sub64(z.words[0], m_64_0, 0)
 		z.words[1], borrow = bits.Sub64(z.words[1], m_64_1, borrow)
 		z.words[2], borrow = bits.Sub64(z.words[2], m_64_2, borrow)
-		z.words[3], _ = bits.Sub64(z.words[3], m_64_3, borrow)
+		z.words[3], _ = bits.Sub64(z.words[3], m_64_3, borrow) // _ is guaranteed to be 0
 	}
 }
 
-// Change the internal representation to a unique number in 0 <= . < BaseFieldSize
-func (z *bsFieldElement_64) Normalize() {
+// isNormalized checks whether the internal representaion is in 0<= . < BaseFieldSize.
+// This function is only used internally.
+func (z *bsFieldElement_64) isNormalized() bool {
 	// Workaround for Go's lack of constexpr. Hoping for smart-ish compiler.
-	var base_field_temp [4]uint64 = [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}
-	for i := 3; i >= 0; i-- {
-		if z.words[i] < base_field_temp[i] {
-			return
-		} else if z.words[i] > base_field_temp[i] {
-			break
+	var baseFieldSize_copy [4]uint64 = [4]uint64{m_64_0, m_64_1, m_64_2, m_64_3}
+	for i := int(3); i >= 0; i-- {
+		if z.words[i] < baseFieldSize_copy[i] {
+			return true
+		} else if z.words[i] > baseFieldSize_copy[i] {
+			return false
 		}
+	}
+	// if we get here, z.words == BaseFieldSize
+	return false
+}
+
+// z.Normalize() changes the internal representation of z to a unique number in 0 <= . < BaseFieldSize
+func (z *bsFieldElement_64) Normalize() {
+	if z.isNormalized() {
+		return
 	}
 	var borrow uint64
 	z.words[0], borrow = bits.Sub64(z.words[0], m_64_0, 0)
@@ -115,8 +139,27 @@ func (z *bsFieldElement_64) Normalize() {
 	z.words[2], borrow = bits.Sub64(z.words[2], m_64_2, borrow)
 	z.words[3], borrow = bits.Sub64(z.words[3], m_64_3, borrow)
 	if borrow != 0 {
-		panic("Underflow in normalization. This should never happen.")
+		panic("bsFieldElement_64: Underflow in normalization. This was supposed to be impossible to happen.")
 	}
+}
+
+// z.Sign() outputs the "sign" of z. More precisely, consider the integer representation z of minimal absolute value (i.e between -BaseField/2 < . < BaseField/2) and take its sign.
+// This is not compatible with addition or multiplication. It has the property that the Sign(z) == -Sign(-z), which is the only thing we need.
+func (z *bsFieldElement_64) Sign() int {
+	z.Normalize()
+	if z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0 {
+		return 0
+	}
+	var mhalf_copy [4]uint64 = [4]uint64{mhalved_64_0, mhalved_64_1, mhalved_64_2, mhalved_64_3}
+	for i := int(3); i >= 0; i-- {
+		if z.words[i] > mhalf_copy[i] {
+			return -1
+		} else if z.words[i] < mhalf_copy[i] {
+			return 1
+		}
+	}
+	// If we get here, z is equal to mhalf, which we defined as (BaseFieldSize-1)/2. Due to rounding, this corresponds to +1
+	return 1
 }
 
 // Add x + y and store the result in z
@@ -126,8 +169,8 @@ func (z *bsFieldElement_64) Add(x, y *bsFieldElement_64) {
 	z.words[1], carry = bits.Add64(x.words[1], y.words[1], carry)
 	z.words[2], carry = bits.Add64(x.words[2], y.words[2], carry)
 	z.words[3], carry = bits.Add64(x.words[3], y.words[3], carry)
-	// At this point carry == 1 basically only happens if you do it on purpose.
-	// NOTE: If carry ==1, then z.maybe_reduce_once() actually commutes with the -=mdoubled here: it won't do anything either before or after it.
+	// carry == 1 basically only happens here if you do it on purpose (add up *lots* of non-normalized numbers).
+	// NOTE: If carry == 1, then z.maybe_reduce_once() actually commutes with the -=mdoubled here: it won't do anything either before or after it.
 	if carry != 0 {
 		z.words[0], carry = bits.Sub64(z.words[0], mdoubled_64_0, 0)
 		z.words[1], carry = bits.Sub64(z.words[1], mdoubled_64_1, carry)
@@ -187,7 +230,7 @@ func mul_four_one_64(x *[4]uint64, y uint64) (low uint64, high [4]uint64) {
 	return
 }
 
-// This computes (target + x * y) >> 64, stores the result in target and return the uint64 shifted out (everything low-endian)
+// add_mul_shift_64 computes (target + x * y) >> 64, stores the result in target and return the uint64 shifted out (everything low-endian)
 func add_mul_shift_64(target *[4]uint64, x *[4]uint64, y uint64) (low uint64) {
 
 	// carry_mul_even resp. carry_mul_odd end up in target[even] resp. target[odd]
@@ -530,27 +573,39 @@ func (z *bsFieldElement_64) Format(s fmt.State, ch rune) {
 }
 
 type PrefixBits byte
+type prefixBits = byte // must be the same as above, but as alias
+
+const maxprefixlength = 8
 
 var ErrPrefixDoesNotFit error = errors.New("while trying to serialize a field element with a prefix, the prefix did not fit, because the number was too large")
+var ErrPrefixLengthInvalid error = errors.New("in FieldElement (de)serializitation, an invalid prefix length > 8 was requested")
+var ErrPrefixLengthInvalid2 error = errors.New("in FieldElement (de)serialization, the requested prefix has bits in positions that are not allowed by prefix length")
+var ErrInvalidByteOrder error = errors.New("unrecognized byte order in FieldElement (de)serialization. You must use either LittleEndian or BigEndian from the encoding/binary standard library")
+var ErrPrefixMismatch error = errors.New("during deserialization, the read prefix did not match the expected one")
+var ErrNonNormalizedDeserialization = errors.New("during deserialization, the read number was not the minimal representative modulo BaseFieldSize")
+
+func checkPrefixValidity(prefix PrefixBits, prefix_length uint8) error {
+	if prefix_length > maxprefixlength {
+		return ErrPrefixLengthInvalid
+	}
+	if prefixBits(prefix)>>prefix_length != 0 {
+		return ErrPrefixLengthInvalid2
+	}
+	return nil
+}
 
 func (z *bsFieldElement_64) SerializeWithPrefix(output io.Writer, prefix PrefixBits, prefix_length uint8, byteOrder binary.ByteOrder) (bytes_written int, err error) {
+	err = checkPrefixValidity(prefix, prefix_length)
+	if err != nil {
+		return
+	}
 	var low_endian_words [4]uint64 = z.undoMontgomery()
-	bytes_written = 0
-	if prefix_length > 8 {
-		err = errors.New("serializeWithPrefix: Prefix length is larger than 8")
-		return
-	}
-	var prefix_8 byte = byte(prefix)
-	if prefix_8&(0xFF>>prefix_length) != 0 {
-		err = errors.New("serializeWithPrefix: prefix has bits is positions that are not than allowed by prefix_length")
-		return
-	}
 	if bits.LeadingZeros64(low_endian_words[3]) < int(prefix_length) {
 		err = ErrPrefixDoesNotFit
 		return
 	}
 
-	low_endian_words[3] |= uint64(prefix_8) << 56
+	low_endian_words[3] |= (uint64(prefix) << (64 - prefix_length))
 	var buf []byte = make([]byte, 8)
 	var written_now int
 
@@ -573,7 +628,58 @@ func (z *bsFieldElement_64) SerializeWithPrefix(output io.Writer, prefix PrefixB
 			}
 		}
 	} else {
-		err = errors.New("serializeWithPrefix: Unrecognized byte order. You must use either LittleEndian or BigEndian from the encoding/binary standard library")
+		err = ErrInvalidByteOrder
+	}
+	return
+}
+
+func (z *bsFieldElement_64) deserializeAndGetPrefix(input io.Reader, prefix_length uint8, byteOrder binary.ByteOrder) (bytes_read int, prefix PrefixBits, err error) {
+	if prefix_length > maxprefixlength {
+		err = ErrPrefixLengthInvalid
+		return
+	}
+	buf := make([]byte, 32)
+	bytes_read, err = io.ReadFull(input, buf)
+	if err != nil {
+		return
+	}
+	if byteOrder == binary.BigEndian {
+		for i := 0; i < 3; i++ {
+			z.words[3-i] = byteOrder.Uint64(buf[i*8 : (i+1)*8])
+		}
+	} else if byteOrder == binary.LittleEndian {
+		for i := 0; i < 3; i++ {
+			z.words[i] = byteOrder.Uint64(buf[i*8 : (i+1)*8])
+		}
+	} else {
+		err = ErrInvalidByteOrder
+		return
+	}
+	var bitmask_remaining uint64 = 0xFFFFFFFF_FFFFFFFF >> prefix_length
+	prefix = PrefixBits(z.words[3] >> (64 - prefix_length))
+	z.words[3] &= bitmask_remaining
+	if !z.isNormalized() {
+		err = ErrNonNormalizedDeserialization
+		// We do not return, because we put z in Montgomery form before, such that the output is what we read modulo BaseFieldSize, even though we have an error.
+	}
+	z.MulEq(&bsFieldElement_64_r) // This puts z in Montgomery form
+	return
+}
+
+func (z *bsFieldElement_64) DeserializeWithPrefix(input io.Reader, prefix PrefixBits, prefix_length uint8, byteOrder binary.ByteOrder) (bytes_read int, err error) {
+	err = checkPrefixValidity(prefix, prefix_length)
+	if err != nil {
+		return
+	}
+
+	var prefix_read PrefixBits
+	bytes_read, prefix_read, err = z.deserializeAndGetPrefix(input, prefix_length, byteOrder)
+	// We want to have the following error precendece nonsensical input > IO errors and others > PrefixMismatch > ErrNonNormalizedDeserialization.
+	if err != nil && err != ErrNonNormalizedDeserialization {
+		return
+	}
+	if prefix_read != prefix {
+		err = ErrPrefixMismatch
 	}
 	return
 }
