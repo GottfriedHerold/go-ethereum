@@ -1,6 +1,8 @@
 package bandersnatch
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -362,4 +364,39 @@ func TestConstants(t *testing.T) {
 	if !temp.IsZero() {
 		t.Fatal("Representation of one or minus one are inconsistent: They do not add to zero")
 	}
+}
+
+func TestSerializeFieldElements(t *testing.T) {
+	const iterations = 100
+	var drng *rand.Rand = rand.New(rand.NewSource(87))
+	for i := 0; i < iterations; i++ {
+		var buf bytes.Buffer
+		var fe bsFieldElement_64
+		fe.setRandomUnsafe(drng)
+		// do little endian and big endian half the time
+		var byteOrder binary.ByteOrder = binary.LittleEndian
+		if i%2 == 0 {
+			byteOrder = binary.BigEndian
+		}
+		bytes_written, err := fe.SerializeWithPrefix(&buf, PrefixBits(0), 0, byteOrder)
+		if err != nil {
+			t.Fatal("Serialization of field element failed with error ", err)
+		}
+		if bytes_written != 32 {
+			t.Fatal("Serialization of field element did not write exptected number of bytes")
+		}
+		var fe2 bsFieldElement_64
+		bytes_read, err := fe2.DeserializeWithPrefix(&buf, PrefixBits(0), 0, byteOrder)
+		if err != nil {
+			t.Fatal("Deserialization of field element failed with error ", err)
+		}
+		if bytes_read != 32 {
+			t.Fatal("Deserialization of field element did not read expceted number of bytes")
+		}
+		if !fe.IsEqual(&fe2) {
+			t.Fatal("Deserializing of field element did not reproduce what was serialized")
+
+		}
+	}
+
 }

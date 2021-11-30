@@ -144,7 +144,7 @@ func (z *bsFieldElement_64) Normalize() {
 }
 
 // z.Sign() outputs the "sign" of z. More precisely, consider the integer representation z of minimal absolute value (i.e between -BaseField/2 < . < BaseField/2) and take its sign.
-// This is not compatible with addition or multiplication. It has the property that the Sign(z) == -Sign(-z), which is the only thing we need.
+// This is not compatible with addition or multiplication. It has the property that Sign(z) == -Sign(-z) and Sign(z) in {-1,0,+1}, which is the only thing we need.
 func (z *bsFieldElement_64) Sign() int {
 	z.Normalize()
 	if z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0 {
@@ -444,6 +444,12 @@ func (z *bsFieldElement_64) undoMontgomery() [4]uint64 {
 	return temp.words
 }
 
+// restoreMontgomery restores the internal Montgomery representation, assuming the current internal representation is *NOT* in Montgomery form.
+// This must only be used internally.
+func (z *bsFieldElement_64) restoreMontgomery() {
+	z.MulEq(&bsFieldElement_64_r)
+}
+
 func (z *bsFieldElement_64) ToInt() *big.Int {
 	temp := z.undoMontgomery()
 	return uintarrayToInt(&temp)
@@ -463,7 +469,7 @@ func (z *bsFieldElement_64) SetInt(v *big.Int) {
 	z.words = intTouintarray(w)
 }
 
-// If z represents a value that can be represented by a uint64, returns it (and err == false), otherwise set err to false
+// If z represents a value that can be represented by a uint64, returns it (and err == false), otherwise set err to true
 func (z *bsFieldElement_64) ToUint64() (result uint64, err bool) {
 	temp := z.undoMontgomery()
 	result = temp[0]
@@ -473,14 +479,13 @@ func (z *bsFieldElement_64) ToUint64() (result uint64, err bool) {
 
 // Sets z to the given value of type uint64
 func (z *bsFieldElement_64) SetUInt64(value uint64) {
-	// Set z to value/2^256 (due to Montgomery Form):
+	// Sets z.words to the correct value (not in Montgomery form)
 	z.words[0] = value
 	z.words[1] = 0
 	z.words[2] = 0
 	z.words[3] = 0
-
-	// Multiply z by 2^256:
-	z.Mul(z, &bsFieldElement_64_r)
+	// put in Montgomery form
+	z.restoreMontgomery()
 }
 
 // Generate uniformly random number. Note that this is not crypto-grade randomness. Testing only.
@@ -644,11 +649,11 @@ func (z *bsFieldElement_64) deserializeAndGetPrefix(input io.Reader, prefix_leng
 		return
 	}
 	if byteOrder == binary.BigEndian {
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 4; i++ {
 			z.words[3-i] = byteOrder.Uint64(buf[i*8 : (i+1)*8])
 		}
 	} else if byteOrder == binary.LittleEndian {
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 4; i++ {
 			z.words[i] = byteOrder.Uint64(buf[i*8 : (i+1)*8])
 		}
 	} else {
@@ -662,7 +667,7 @@ func (z *bsFieldElement_64) deserializeAndGetPrefix(input io.Reader, prefix_leng
 		err = ErrNonNormalizedDeserialization
 		// We do not return, because we put z in Montgomery form before, such that the output is what we read modulo BaseFieldSize, even though we have an error.
 	}
-	z.MulEq(&bsFieldElement_64_r) // This puts z in Montgomery form
+	z.restoreMontgomery()
 	return
 }
 
