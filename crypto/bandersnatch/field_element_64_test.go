@@ -419,17 +419,32 @@ func TestSerializeFieldElements(t *testing.T) {
 		}
 
 		bytes_written, err := fe.SerializeWithPrefix(&buf, PrefixBits(random_prefix), 2, byteOrder)
-		if err != nil || bytes_written < BaseFieldByteLength {
-			t.Fatal("Serialization of Field element failed with long prefix: ", err)
+		if err != nil || bytes_written != BaseFieldByteLength {
+			t.Fatal("Serialization of field element failed with long prefix: ", err)
 		}
 		bytes_read, err := fe2.DeserializeWithPrefix(&buf, PrefixBits(random_prefix), 2, byteOrder)
-		if err != nil || bytes_read < BaseFieldByteLength {
-			t.Fatal("Deserialization of Field element failed with long prefix: ", err)
+		if err != nil || bytes_read != BaseFieldByteLength {
+			t.Fatal("Deserialization of field element failed with long prefix: ", err)
 		}
 		if !fe.IsEqual(&fe2) {
 			t.Fatal("Roundtripping field elements failed with long prefix")
 		}
+		buf.Reset() // not really needed
+		bytes_written, err = fe.SerializeWithPrefix(&buf, PrefixBits(1), 1, byteOrder)
+		if bytes_written != BaseFieldByteLength || err != nil {
+			t.Fatal("Serialization of field elements failed on resetted buffer")
+		}
+		_, err = fe2.DeserializeWithPrefix(&buf, PrefixBits(0), 1, byteOrder)
+		if err != ErrPrefixMismatch {
+			t.Fatal("Prefix mismatch was not detected in deserialization of field elements")
+		}
+		buf.Reset()
+		fe.SerializeWithPrefix(&buf, PrefixBits(0), 0, binary.BigEndian)
+		buf.Bytes()[0] |= 0x80
+		bytes_read, err = fe2.DeserializeWithPrefix(&buf, PrefixBits(0), 0, binary.BigEndian)
+		if bytes_read != BaseFieldByteLength || err != ErrNonNormalizedDeserialization {
+			t.Fatal("Non-normalized field element not recognized as such during deserialization")
+		}
 
 	}
-
 }
