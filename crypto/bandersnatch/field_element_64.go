@@ -144,17 +144,18 @@ func (z *bsFieldElement_64) Normalize() {
 }
 
 // z.Sign() outputs the "sign" of z. More precisely, consider the integer representation z of minimal absolute value (i.e between -BaseField/2 < . < BaseField/2) and take its sign.
-// This is not compatible with addition or multiplication. It has the property that Sign(z) == -Sign(-z) and Sign(z) in {-1,0,+1}, which is the only thing we need.
+// This is not compatible with addition or multiplication. It has the property that Sign(z) == -Sign(-z) and Sign(z) in {-1,0,+1}, which is the main thing we need.
+// We also might use the fact that positive-sign field elements start with 00 in their serializiation.
 func (z *bsFieldElement_64) Sign() int {
-	z.Normalize()
 	if z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0 {
 		return 0
 	}
+	var low_endian_words [4]uint64 = z.undoMontgomery()
 	var mhalf_copy [4]uint64 = [4]uint64{mhalved_64_0, mhalved_64_1, mhalved_64_2, mhalved_64_3}
 	for i := int(3); i >= 0; i-- {
-		if z.words[i] > mhalf_copy[i] {
+		if low_endian_words[i] > mhalf_copy[i] {
 			return -1
-		} else if z.words[i] < mhalf_copy[i] {
+		} else if low_endian_words[i] < mhalf_copy[i] {
 			return 1
 		}
 	}

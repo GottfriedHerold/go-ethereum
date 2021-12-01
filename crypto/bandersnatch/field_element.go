@@ -49,7 +49,7 @@ const BaseFieldBitLength = 255
 
 // number of bytes of BaseFieldSize == number of bytes needed to store individual field elements.
 // We might actually use more bytes
-const BaseFieldByteLength = (BaseFieldBitLength + 1) / 8
+const BaseFieldByteLength = (BaseFieldBitLength + 7) / 8
 
 // Modulus of the Base field as a big-endian byte array (big.Int is easier with big-endian)
 var BaseFieldSize_BigEndianBytes [BaseFieldByteLength]byte = func() (ret [BaseFieldByteLength]byte) {
@@ -105,4 +105,3 @@ var (
 
 	FieldElementMinusOne = bsFieldElement_64_minusone
 )
-
