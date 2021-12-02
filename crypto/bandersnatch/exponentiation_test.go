@@ -18,7 +18,7 @@ func TestSimpleExponentiation(t *testing.T) {
 	var exp2 = big.NewInt(1)
 	var exp3 = big.NewInt(-1)
 
-	temp1 = make_random_twedwards_full(drng)
+	temp1 = makeRandomPointOnCurve_t(drng)
 	temp2.exp_naive_xx(&temp1, exp2) // exponent is 1
 	if !temp2.is_equal_exact_tt(&temp1) {
 		t.Error("1 * P != P for naive exponentiation")
@@ -35,8 +35,8 @@ func TestSimpleExponentiation(t *testing.T) {
 
 	var p1, p2, p3 Point_xtw
 	for i := 0; i < iterations; i++ {
-		p1 = make_random_twedwards_full(drng)
-		p2 = make_random_twedwards_full(drng)
+		p1 = makeRandomPointOnCurve_t(drng)
+		p2 = makeRandomPointOnCurve_t(drng)
 		p3.add_ttt(&p1, &p2)
 		exp1.Rand(drng, CurveOrder_Int)
 		exp2.Rand(drng, CurveOrder_Int)
@@ -64,7 +64,7 @@ func TestQuotientGroup(t *testing.T) {
 	var NumN, NumD, NumE1, NumE2 uint16
 	var LegCheck bool
 	for i := 0; i < iterations; i++ {
-		temp = make_random_twedwards_full(drng)
+		temp = makeRandomPointOnCurve_t(drng)
 		LegCheck = temp.legendre_check_point()
 		temp.exp_naive_xx(&temp, GroupOrder_Int)
 		var isN, isD, isE1, isE2 int = 0, 0, 0, 0

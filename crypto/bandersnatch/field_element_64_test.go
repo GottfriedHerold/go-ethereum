@@ -3,7 +3,6 @@ package bandersnatch
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math/big"
 	"math/bits"
 	"math/rand"
@@ -116,7 +115,25 @@ func TestOps_8_vs_64(t *testing.T) {
 			t.Fatal("Inversion differs between bsFieldElement_8 and bsFieldElement64", *result_8, *result_64)
 		}
 	}
+}
 
+func TestDivision(t *testing.T) {
+	var drng *rand.Rand = rand.New(rand.NewSource(13513))
+	const iterations = 50
+	for i := 0; i < iterations; i++ {
+		var num, denom, result bsFieldElement_64
+		num.setRandomUnsafe(drng)
+		denom.setRandomUnsafe(drng)
+		result.Divide(&num, &denom)
+		result.MulEq(&denom)
+		if !num.IsEqual(&result) {
+			t.Fatal("(x/y) * y != x for random x,y")
+		}
+		num.DivideEq(&num)
+		if !num.IsOne() {
+			t.Fatal("x/x != 1 for random x")
+		}
+	}
 }
 
 func TestAssign_64(t *testing.T) {
@@ -360,8 +377,6 @@ func TestConstants(t *testing.T) {
 		t.Fatal("Alternative representation of zero is not recognized as zero")
 	}
 	temp.Add(&bsFieldElement_64_minusone, &bsFieldElement_64_one)
-	fmt.Println(temp.words)
-	fmt.Println(bsFieldElement_64_zero_alt.words)
 	if !temp.IsZero() {
 		t.Fatal("Representation of one or minus one are inconsistent: They do not add to zero")
 	}
@@ -379,7 +394,7 @@ func TestSerializeFieldElements(t *testing.T) {
 		if i%2 == 0 {
 			byteOrder = binary.BigEndian
 		}
-		bytes_written, err := fe.SerializeWithPrefix(&buf, PrefixBits(0), 0, byteOrder)
+		bytes_written, err := fe.Serialize(&buf, byteOrder)
 		if err != nil {
 			t.Fatal("Serialization of field element failed with error ", err)
 		}
@@ -387,7 +402,7 @@ func TestSerializeFieldElements(t *testing.T) {
 			t.Fatal("Serialization of field element did not write exptected number of bytes")
 		}
 		var fe2 bsFieldElement_64
-		bytes_read, err := fe2.DeserializeWithPrefix(&buf, PrefixBits(0), 0, byteOrder)
+		bytes_read, err := fe2.Deserialize(&buf, byteOrder)
 		if err != nil {
 			t.Fatal("Deserialization of field element failed with error ", err)
 		}
@@ -439,12 +454,11 @@ func TestSerializeFieldElements(t *testing.T) {
 			t.Fatal("Prefix mismatch was not detected in deserialization of field elements")
 		}
 		buf.Reset()
-		fe.SerializeWithPrefix(&buf, PrefixBits(0), 0, binary.BigEndian)
+		fe.Serialize(&buf, binary.BigEndian)
 		buf.Bytes()[0] |= 0x80
-		bytes_read, err = fe2.DeserializeWithPrefix(&buf, PrefixBits(0), 0, binary.BigEndian)
+		bytes_read, err = fe2.Deserialize(&buf, binary.BigEndian)
 		if bytes_read != BaseFieldByteLength || err != ErrNonNormalizedDeserialization {
 			t.Fatal("Non-normalized field element not recognized as such during deserialization")
 		}
-
 	}
 }

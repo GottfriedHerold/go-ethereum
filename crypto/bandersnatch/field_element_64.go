@@ -100,7 +100,7 @@ var bsFieldElement_64_minusone bsFieldElement_64 = bsFieldElement_64{words: [4]u
 // The number 2^256 in Montgomery form.
 var bsFieldElement_64_r bsFieldElement_64 = bsFieldElement_64{words: [4]uint64{0: rsquared_64_0, 1: rsquared_64_1, 2: rsquared_64_2, 3: rsquared_64_3}}
 
-// Change the representation of z to restore the invariant that z.words + BaseFieldSize must not overflow.
+// maybe_reduce_once changes the representation of z to restore the invariant that z.words + BaseFieldSize must not overflow.
 func (z *bsFieldElement_64) maybe_reduce_once() {
 	var borrow uint64
 	// Note: if z.words[3] == m_64_3, we may or may not be able to reduce, depending on the other words. At any rate, we do not really need to.
@@ -150,6 +150,9 @@ func (z *bsFieldElement_64) Sign() int {
 	if z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0 {
 		return 0
 	}
+	// we take the sign of the non-Montgomery form.
+	// Of course, the property that Sign(z) == =Sign(-z) would hold either way (and not switching would actually be more efficient).
+	// However, Sign() enters into (De)Serialization routines for curve points. This choice is probably more portable.
 	var low_endian_words [4]uint64 = z.undoMontgomery()
 	var mhalf_copy [4]uint64 = [4]uint64{mhalved_64_0, mhalved_64_1, mhalved_64_2, mhalved_64_3}
 	for i := int(3); i >= 0; i-- {
@@ -161,6 +164,11 @@ func (z *bsFieldElement_64) Sign() int {
 	}
 	// If we get here, z is equal to mhalf, which we defined as (BaseFieldSize-1)/2. Due to rounding, this corresponds to +1
 	return 1
+}
+
+func (z *bsFieldElement_64) Jacobi() int {
+	tempInt := z.ToInt()
+	return big.Jacobi(tempInt, BaseFieldSize)
 }
 
 // Add x + y and store the result in z
@@ -261,7 +269,7 @@ func add_mul_shift_64(target *[4]uint64, x *[4]uint64, y uint64) (low uint64) {
 	return
 }
 
-// This function computes t+= (q*BaseFieldSize)/2^64 + 1, assuming no overflow.
+// This function computes t+= (q*BaseFieldSize)/2^64 + 1, assuming no overflow (which needs to be guaranteed by the caller).
 func montgomery_step_64(t *[4]uint64, q uint64) {
 	var low, high, carry1, carry2 uint64
 
@@ -533,13 +541,19 @@ func (z *bsFieldElement_64) multiply_by_five() {
 	z.maybe_reduce_once()
 }
 
-// Multiplicative Inverse
+// Multiplicative Inverse. If x is 0, the behaviour is undefined.
 func (z *bsFieldElement_64) Inv(x *bsFieldElement_64) {
 
 	// Slow, but rarely used anyway (due to working in projective coordinates)
 	t := x.ToInt()
 	t.ModInverse(t, BaseFieldSize)
 	z.SetInt(t)
+}
+
+func (z *bsFieldElement_64) Divide(num *bsFieldElement_64, denom *bsFieldElement_64) {
+	var temp bsFieldElement_64 // needed, because z, num, denom might alias
+	temp.Inv(denom)
+	z.Mul(num, &temp)
 }
 
 // Checks whether z == x (mod BaseFieldSize)
@@ -570,6 +584,16 @@ func (z *bsFieldElement_64) IsEqual(x *bsFieldElement_64) bool {
 	default:
 		panic("This cannot happen")
 	}
+}
+
+func (z *bsFieldElement_64) SquareRoot(x *bsFieldElement_64) (ok bool) {
+	xInt := x.ToInt()
+	// yInt := big.NewInt(0)
+	if xInt.ModSqrt(xInt, BaseFieldSize) == nil {
+		return false
+	}
+	z.SetInt(xInt)
+	return true
 }
 
 // useful for debugging
@@ -690,6 +714,23 @@ func (z *bsFieldElement_64) DeserializeWithPrefix(input io.Reader, prefix Prefix
 	return
 }
 
+// Deserialize(input, byteOrder) deserializes from input, reading 32 bytes from it and interpreting it as an integer.
+// The result is stored in the receiver. byteOrder must be either binary.BigEndian or binary.LittleEndian and relates to the order of bytes in input.
+// Note that the input number must be in 0 <= . < BaseFieldSize. We have err == ErrNonNormalizedDeserialization iff this is violated and we have no other error. In this case, the result is still correct modulo BaseFieldSize.
+// Other values for err are possible: in particular io errors from input.
+func (z *bsFieldElement_64) Deserialize(input io.Reader, byteOrder binary.ByteOrder) (bytes_read int, err error) {
+	bytes_read, _, err = z.deserializeAndGetPrefix(input, 0, byteOrder) // _ == 0
+	return
+}
+
+// Serialize(output, byteOrder) serializes the received field element to output. It interprets the field element as a 32-byte number in 0<=.<BaseFieldSize (not in Montgomery Form) and tries to write
+// 32 bytes to output. byteOrder must be either binary.BigEndian or binary.LittleEndian and refers to the ordering of bytes (not words) in output.
+// The return values are the actual number of bytes written and a potential error (such as io errors). If no error happened, err == nil, in which case we are guaranteed that bytes_written == 32.
+func (z *bsFieldElement_64) Serialize(output io.Writer, byteOrder binary.ByteOrder) (bytes_written int, err error) {
+	bytes_written, err = z.SerializeWithPrefix(output, PrefixBits(0), 0, byteOrder)
+	return
+}
+
 func (z *bsFieldElement_64) String() string {
 	z.Normalize()
 	return z.ToInt().String()
@@ -717,4 +758,12 @@ func (z *bsFieldElement_64) SquareEq() {
 
 func (z *bsFieldElement_64) NegEq() {
 	z.Neg(z)
+}
+
+func (z *bsFieldElement_64) InvEq() {
+	z.Inv(z)
+}
+
+func (z *bsFieldElement_64) DivideEq(denom *bsFieldElement_64) {
+	z.Divide(z, denom)
 }

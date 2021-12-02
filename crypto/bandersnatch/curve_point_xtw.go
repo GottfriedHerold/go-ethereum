@@ -1,7 +1,6 @@
 package bandersnatch
 
 import (
-	"fmt"
 	"math/big"
 )
 
@@ -366,34 +365,4 @@ func (p *Point_xtw) SetFrom(input CurvePointRead) {
 		p.y.MulEq(&p.z)
 		p.z.SquareEq()
 	}
-}
-
-// Note: This does NOT verify that the point is in the correct subgroup. Currently prints on failure (as it is only used in testing for now anyway)
-func (p *Point_xtw) verify_Point_on_Curve() bool {
-	if p.IsSingular() {
-		fmt.Println("Singular Point encountered")
-		return false
-	}
-	var u, v FieldElement
-	u.Mul(&p.x, &p.y)
-	v.Mul(&p.t, &p.z)
-	if !u.IsEqual(&v) {
-		fmt.Println("Point with inconsistent coordinates encountered")
-		return false
-	}
-	// We now check the main curve equation.
-	u.Mul(&p.t, &p.t)
-	u.MulEq(&TwistedEdwardsD_fe) // u = d*t^2
-	v.Mul(&p.z, &p.z)
-	u.AddEq(&v) // u= dt^2 + z^2
-	v.Mul(&p.y, &p.y)
-	u.SubEq(&v) // u = z^2 + dt^2 - y^2
-	v.Mul(&p.x, &p.x)
-	v.multiply_by_five()
-	u.AddEq(&v) // u = z^2 + dt^2 - y^2 + 5x^2 ==  z^2 + dt^2 - y^2 - ax^2
-	if !u.IsZero() {
-		fmt.Printf("Point not on curve encountered: x=0x%x y=0x%x z=0x%x t=0x%x", p.x.ToInt(), p.y.ToInt(), p.z.ToInt(), p.t.ToInt())
-		return false
-	}
-	return true
 }

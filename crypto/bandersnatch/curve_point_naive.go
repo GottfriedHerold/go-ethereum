@@ -1,7 +1,6 @@
 package bandersnatch
 
 import (
-	"math/big"
 	"math/rand"
 )
 
@@ -11,7 +10,7 @@ import (
 */
 
 // naive implementation using the affine definition. This is just used to test the other formulas against.
-func (out *Point_xtw) add_xxx_naive(input1, input2 *Point_xtw) {
+func (out *Point_xtw) addNaive_ttt(input1, input2 *Point_xtw) {
 	var x1, y1, z1inv, x2, y2, z2inv bsFieldElement_64
 
 	z1inv.Inv(&input1.z)
@@ -48,52 +47,39 @@ func (out *Point_xtw) add_xxx_naive(input1, input2 *Point_xtw) {
 }
 
 // Creates a random point on the curve, which does not neccessarily need to be in the correct subgroup.
-func make_random_twedwards_full(rnd *rand.Rand) Point_xtw {
+func makeRandomPointOnCurve_t(rnd *rand.Rand) Point_xtw {
 
-	var x, x2, y, t, z, num, denom bsFieldElement_64
-	var d bsFieldElement_64
-	d.SetInt(TwistedEdwardsD_Int)
+	var x, y, t, z bsFieldElement_64
 
+	// Set x randomly, compute y from x
 	for {
 		x.setRandomUnsafe(rnd)
 		// x.SetUInt64(1)
-
-		// compute y = sqrt( (1-ax^2)/(1-dx^2) )
-
-		x2.Mul(&x, &x)                            // x2 = x^2
-		denom.Mul(&x2, &d)                        // denom = dx^2
-		denom.Sub(&bsFieldElement_64_one, &denom) // denom = 1 - d*x^2
-		x2.multiply_by_five()                     // x2 = 5x^2
-		num.Add(&bsFieldElement_64_one, &x2)      // num = 1 + 5x^2 = 1 - ax^2
-		numInt := num.ToInt()
-		denomInt := denom.ToInt()
-		// Note: denom,num != 0, because d and a are non-squares
-		if big.Jacobi(numInt, BaseFieldSize)*big.Jacobi(denomInt, BaseFieldSize) == -1 {
-			continue
+		var err error
+		y, err = recoverYFromXAffine(&x, false)
+		if err == nil {
+			break
 		}
-		yInt := big.NewInt(0)
-		yInt.ModInverse(denomInt, BaseFieldSize) // y = 1/denom
-		yInt.Mul(yInt, numInt)                   // y = num/denom
-		yInt.Mod(yInt, BaseFieldSize)            // modular reduction
-		yInt.ModSqrt(yInt, BaseFieldSize)        // y = sqrt(num/denom)
-		y.SetInt(yInt)
-		break
 	}
+
+	// Set t = x*y. If we would set z to 1, this is now a correct point.
 	t.Mul(&x, &y)
 
+	// As this is only used for debugging, we set z randomly and scale the point.
 	z.setRandomUnsafe(rnd)
-	if z.IsZero() {
+	if z.IsZero() { // This should only happens with negligle proability anyway.
 		z.SetOne()
 	}
 	x.MulEq(&z)
 	y.MulEq(&z)
 	t.MulEq(&z)
+
 	return Point_xtw{x: x, y: y, z: z, t: t}
 }
 
 // Creates a random point on the correct subgroup
-func make_random_x(rnd *rand.Rand) Point_xtw {
-	r := make_random_twedwards_full(rnd)
+func makeRandomPointInSubgroup_t(rnd *rand.Rand) Point_xtw {
+	r := makeRandomPointOnCurve_t(rnd)
 	r.clearCofactor2()
 	return r
 }

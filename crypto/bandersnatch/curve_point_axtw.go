@@ -11,12 +11,12 @@ type Point_axtw struct {
 // NeutralElement_axtw denotes the Neutral Element of the Bandersnatch curve in affine extended twisted Edwards coordinates.
 var NeutralElement_axtw Point_axtw = Point_axtw{x: FieldElementZero, y: FieldElementOne, t: FieldElementZero}
 
-// X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates.
+// X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates, i.e. X/Z
 func (P *Point_axtw) X_affine() FieldElement {
 	return P.x
 }
 
-// Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates.
+// Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates, i.e. Y/Z
 func (P *Point_axtw) Y_affine() FieldElement {
 	return P.y
 }

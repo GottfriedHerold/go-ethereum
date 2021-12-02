@@ -6,10 +6,10 @@ import (
 )
 
 func TestExampleIsGenerator(t *testing.T) {
-	if !NeutralElement_xtw.verify_Point_on_Curve() {
+	if !NeutralElement_xtw.isPointOnCurve() {
 		t.Fatal("Neutral element not on curve")
 	}
-	if !example_generator_xtw.verify_Point_on_Curve() {
+	if !example_generator_xtw.isPointOnCurve() {
 		t.Fatal("Example point is not on curve")
 	}
 }
@@ -18,8 +18,8 @@ func TestRandomSampling(t *testing.T) {
 	const iterations = 1000
 	var drng *rand.Rand = rand.New(rand.NewSource(666))
 	for i := 0; i < iterations; i++ {
-		p := make_random_twedwards_full(drng)
-		if !p.verify_Point_on_Curve() {
+		p := makeRandomPointOnCurve_t(drng)
+		if !p.isPointOnCurve() {
 			t.Fatal("Randomly generated curve point is actually not on curve", i)
 		}
 	}
@@ -31,7 +31,7 @@ func Test_add_xxx(t *testing.T) {
 	var p1, p2, res1, res2 Point_xtw
 
 	res1.add_ttt(&NeutralElement_xtw, &NeutralElement_xtw)
-	if !res1.verify_Point_on_Curve() {
+	if !res1.isPointOnCurve() {
 		t.Fatal("0+0 not on curve for add_xxx")
 	}
 	if !res1.is_equal_exact_tt(&NeutralElement_xtw) {
@@ -40,28 +40,28 @@ func Test_add_xxx(t *testing.T) {
 
 	for i := 0; i < iterations; i++ {
 
-		p1 = make_random_twedwards_full(drng)
+		p1 = makeRandomPointOnCurve_t(drng)
 		p2.add_ttt(&p1, &NeutralElement_xtw)
-		if !p2.verify_Point_on_Curve() {
+		if !p2.isPointOnCurve() {
 			t.Fatal("x + 0 is not on curve for random x on curve in add_xxx")
 		}
 		if !p1.is_equal_exact_tt(&p2) {
 			t.Fatal("x + 0 != x for random x in add_xxx")
 		}
 		p2.add_ttt(&NeutralElement_xtw, &p1)
-		if !p2.verify_Point_on_Curve() {
+		if !p2.isPointOnCurve() {
 			t.Fatal("0 + x is not on curve for random x on curve in add_xxx")
 		}
 		if !p1.is_equal_exact_tt(&p2) {
 			t.Fatal("0 + x != x for random x in add_xxx")
 		}
 
-		p2 = make_random_twedwards_full(drng)
-		_ = p2.verify_Point_on_Curve()
-		_ = p1.verify_Point_on_Curve()
+		p2 = makeRandomPointOnCurve_t(drng)
+		_ = p2.isPointOnCurve()
+		_ = p1.isPointOnCurve()
 		res1.add_ttt(&p1, &p2)
-		res2.add_xxx_naive(&p1, &p2)
-		if !res1.verify_Point_on_Curve() {
+		res2.addNaive_ttt(&p1, &p2)
+		if !res1.isPointOnCurve() {
 			t.Fatal("Result of curve addition not on curve for add_xxx")
 		}
 		if !res1.is_equal_exact_tt(&res2) {
@@ -79,8 +79,8 @@ func Test_sub_xxx(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(66354))
 	var p1, p2, res1, res2 Point_xtw
 	for i := 0; i < iterations; i++ {
-		p1 = make_random_twedwards_full(drng)
-		p2 = make_random_twedwards_full(drng)
+		p1 = makeRandomPointOnCurve_t(drng)
+		p2 = makeRandomPointOnCurve_t(drng)
 		res1.sub_ttt(&p1, &p2)
 		res2.add_ttt(&res1, &p2)
 		if !res2.is_equal_exact_tt(&p1) {
@@ -104,7 +104,7 @@ func Test_neg_ttt(t *testing.T) {
 		case 3:
 			p1 = exceptionalPoint_2_xtw
 		default:
-			p1 = make_random_twedwards_full(drng)
+			p1 = makeRandomPointOnCurve_t(drng)
 		}
 		p2.neg_tt(&p1)
 		result.add_ttt(&p1, &p2)
@@ -117,7 +117,7 @@ func Test_neg_ttt(t *testing.T) {
 func TestSingularAddition(t *testing.T) {
 	var drng *rand.Rand = rand.New(rand.NewSource(666))
 
-	var temp1 Point_xtw = make_random_twedwards_full(drng)
+	var temp1 Point_xtw = makeRandomPointOnCurve_t(drng)
 	var temp2, temp3, temp4, temp5 Point_xtw
 	temp2.add_ttt(&temp1, &exceptionalPoint_1_xtw)
 	temp3.add_ttt(&temp1, &temp2)
@@ -138,13 +138,13 @@ func TestPsi(t *testing.T) {
 	const iterations = 10
 
 	for i := 0; i < iterations; i++ {
-		temp1 = make_random_twedwards_full(drng)
+		temp1 = makeRandomPointOnCurve_t(drng)
 		result1.computeEndomorphism_tt(&temp1)
-		if !result1.verify_Point_on_Curve() {
+		if !result1.isPointOnCurve() {
 			t.Fatal("Psi(random point) is not on curve")
 		}
 
-		temp2 = make_random_twedwards_full(drng)
+		temp2 = makeRandomPointOnCurve_t(drng)
 		temp3.add_ttt(&temp1, &temp2)
 		result2.computeEndomorphism_tt(&temp2)
 		result1.add_ttt(&result1, &result2)
@@ -153,7 +153,7 @@ func TestPsi(t *testing.T) {
 			t.Fatal("Psi is not homomorphic")
 		}
 
-		temp1 = make_random_twedwards_full(drng)
+		temp1 = makeRandomPointOnCurve_t(drng)
 		temp2.neg_tt(&temp1)
 		result1.computeEndomorphism_tt(&temp1)
 		result2.computeEndomorphism_tt(&temp2)
@@ -174,7 +174,7 @@ func TestPsi(t *testing.T) {
 			t.Fatal("Psi(affine order-2 point) != Neutral")
 		}
 
-		temp2 = make_random_twedwards_full(drng)
+		temp2 = makeRandomPointOnCurve_t(drng)
 		temp1.sub_ttt(&orderTwoPoint_xtw, &temp2)
 		result1.computeEndomorphism_tt(&temp1)
 		result2.computeEndomorphism_tt(&temp2)
@@ -187,7 +187,7 @@ func TestPsi(t *testing.T) {
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Psi(E1) != affine-order-2")
 		}
-		temp2 = make_random_twedwards_full(drng)
+		temp2 = makeRandomPointOnCurve_t(drng)
 		temp1.sub_ttt(&exceptionalPoint_1_xtw, &temp2)
 		if temp1.IsSingular() {
 			t.Fatal("Unexpected singularity encountered")
@@ -210,7 +210,7 @@ func TestPsi(t *testing.T) {
 			t.Fatal("Psi(E2) != affine-order-2 point")
 		}
 
-		temp1 = make_random_x(drng)
+		temp1 = makeRandomPointInSubgroup_t(drng)
 		result1.computeEndomorphism_tt(&temp1)
 		result2.exp_naive_xx(&temp1, EndoEigenvalue_Int)
 		if !result1.is_equal_exact_tt(&result2) {
