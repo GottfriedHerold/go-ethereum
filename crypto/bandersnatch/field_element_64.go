@@ -81,11 +81,15 @@ const (
 type bsFieldElement_64 struct {
 	// field elements stored in low-endian 64-bit uints in Montgomery form, i.e. words encodes a number x s.t.
 	// words - x * (1<<256) == 0 (mod BaseFieldSize).
-	// Note that the representation of x is actually NOT unique, as we only guarantee 0 <= words < 1<<256 - BaseFieldSize.
-	// A given x might have either 1 or 2 possible representations.
+
+	// Note that the representation of x is actually NOT unique.
+	// The invariant that we maintain to get efficient field operations is that 0 <= words < (1<<256) - BaseFieldSize, i.e. adding BaseFieldSize does not overflow.
+	// Of course, the invariant concerns the Montgomery representation, interpreting words directly as a 256-bit integer.)
+	// Since BaseFieldSize is between 1/3*2^256 and 1/2*2^256, a given x might have either 1 or 2 possible representations.
 	words [4]uint64
 }
 
+// representation of zero. This is supposedly a constant.
 var bsFieldElement_64_zero bsFieldElement_64
 
 // alternative representation of zero. Note that we must never call Normalize() on it, which e.g. IsEqual may do.
@@ -147,7 +151,7 @@ func (z *bsFieldElement_64) Normalize() {
 // This is not compatible with addition or multiplication. It has the property that Sign(z) == -Sign(-z) and Sign(z) in {-1,0,+1}, which is the main thing we need.
 // We also might use the fact that positive-sign field elements start with 00 in their serializiation.
 func (z *bsFieldElement_64) Sign() int {
-	if z.words[0]|z.words[1]|z.words[2]|z.words[3] == 0 {
+	if z.IsZero() {
 		return 0
 	}
 	// we take the sign of the non-Montgomery form.
@@ -166,12 +170,15 @@ func (z *bsFieldElement_64) Sign() int {
 	return 1
 }
 
+// Jacobi computes the Legendre symbol of the received elements z.
+// This means that z.Jacobi() is +1 if z is a non-zero square and -1 if z is a non-square. z.Jacobi() == 0 iff z.IsZero()
 func (z *bsFieldElement_64) Jacobi() int {
 	tempInt := z.ToInt()
 	return big.Jacobi(tempInt, BaseFieldSize)
 }
 
-// Add x + y and store the result in z
+// Add is used to perform addition.
+// Use z.Add(&x, &y) to add x + y and store the result in z.
 func (z *bsFieldElement_64) Add(x, y *bsFieldElement_64) {
 	var carry uint64
 	z.words[0], carry = bits.Add64(x.words[0], y.words[0], 0)
@@ -191,7 +198,8 @@ func (z *bsFieldElement_64) Add(x, y *bsFieldElement_64) {
 
 }
 
-// Subtract x - y and store the result in z
+// Sub is used to perform subtraction.
+// Use z.Sub(&x, &y) to compute x - y and store the result in z.
 func (z *bsFieldElement_64) Sub(x, y *bsFieldElement_64) {
 	var borrow uint64 // only takes values 0,1
 	z.words[0], borrow = bits.Sub64(x.words[0], y.words[0], 0)
@@ -215,12 +223,13 @@ func (z *bsFieldElement_64) Sub(x, y *bsFieldElement_64) {
 	}
 }
 
-// Additive inverse (i.e. z := -x)
+// Neg computes the additive inverse (i.e. -x)
+// Use z.Neg(&x) to compute z := -x
 func (z *bsFieldElement_64) Neg(x *bsFieldElement_64) {
 	z.Sub(&bsFieldElement_64_zero_alt, x) // using alt here makes the if borrow!=0 in Sub unlikely.
 }
 
-// Multiply 4x64 bit number by a 1x64 bit number. The result is 5x64 bits, split as 1x64 (low) + 4x64 (high), everything low-endian.
+// mul_four_one_64 multiplies a 4x64 bit number by a 1x64 bit number. The result is 5x64 bits, split as 1x64 (low) + 4x64 (high), everything low-endian.
 func mul_four_one_64(x *[4]uint64, y uint64) (low uint64, high [4]uint64) {
 	var carry, mul_result_low uint64
 
@@ -269,7 +278,7 @@ func add_mul_shift_64(target *[4]uint64, x *[4]uint64, y uint64) (low uint64) {
 	return
 }
 
-// This function computes t+= (q*BaseFieldSize)/2^64 + 1, assuming no overflow (which needs to be guaranteed by the caller).
+// montgomery_step_64(&t, q) performs t+= (q*BaseFieldSize)/2^64 + 1, assuming no overflow (which needs to be guaranteed by the caller).
 func montgomery_step_64(t *[4]uint64, q uint64) {
 	var low, high, carry1, carry2 uint64
 
@@ -294,6 +303,8 @@ func montgomery_step_64(t *[4]uint64, q uint64) {
 
 }
 
+// Mul computes multiplication in the field.
+// Use z.Mul(&x, &y) to perform z := x * y
 func (z *bsFieldElement_64) Mul(x, y *bsFieldElement_64) {
 
 	/*

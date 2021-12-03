@@ -146,7 +146,7 @@ func (P *Point_efgh) IsEqual(other CurvePointRead) bool {
 	}
 }
 
-func (P *Point_efgh) IsEqualExact(other CurvePointRead) bool {
+func (P *Point_efgh) IsEqual_exact(other CurvePointRead) bool {
 	temp := P.ExtendedTwistedEdwards()
-	return temp.IsEqualExact(other)
+	return temp.IsEqual_exact(other)
 }

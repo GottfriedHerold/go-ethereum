@@ -319,7 +319,7 @@ func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
 	}
 }
 
-func (p *Point_xtw) IsEqualExact(other CurvePointRead) bool {
+func (p *Point_xtw) IsEqual_exact(other CurvePointRead) bool {
 	if p.IsSingular() || other.IsSingular() {
 		// TODO: Error handling
 		return false

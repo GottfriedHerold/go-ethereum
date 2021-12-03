@@ -50,10 +50,13 @@ func (P *Point_axtw) Z_projective() FieldElement {
 // 	return true
 // }
 
+// AffineExtended returns a copy of the point in affine extended coordinates (i.e. a copy)
 func (p *Point_axtw) AffineExtended() Point_axtw {
+	// technically, we could return *p. There is no way for the caller to modify it without copying it on the caller side.
 	return Point_axtw{x: p.x, y: p.y, t: p.t}
 }
 
+// ExtendedTwistedEdwards returns a copy of the point in extended twisted Edwards coordinates.
 func (p *Point_axtw) ExtendedTwistedEdwards() Point_xtw {
 	return Point_xtw{x: p.x, y: p.y, t: p.t, z: FieldElementOne}
 }
@@ -90,10 +93,13 @@ func (p *Point_axtw) IsSingular() bool {
 	return p.x.IsZero() && p.y.IsZero()
 }
 
+// IsAtInfinity tests whether the point is an infinite (neccessarily order-2) point. Since these points cannot be represented in affine coordinates in the first place, this always returns false.
 func (p *Point_axtw) IsAtInfinity() bool {
 	return false
 }
 
+// IsEqual compares two curve points for equality, working modulo the P = P + A identification. The two points do not have the be in the same coordinate format.
+// TODO: Export variants for specific non-interface types to get more type safety?
 func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 	switch other_real := other.(type) {
 	case *Point_xtw:
@@ -114,7 +120,8 @@ func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 	}
 }
 
-func (p *Point_axtw) IsEqualExact(other CurvePointRead) bool {
+// IsEqual_exact compares two curve points for equality WITHOUT working modulo the P = P+A identification. The two points do not have to be in the same coordinate format.
+func (p *Point_axtw) IsEqual_exact(other CurvePointRead) bool {
 	if p.IsSingular() || other.IsSingular() {
 		// TODO: Error handling
 		return false
@@ -130,55 +137,72 @@ func (p *Point_axtw) IsEqualExact(other CurvePointRead) bool {
 	}
 }
 
+// SetFrom initializes the point from the given input point (which may have a different coordinate format)
 func (p *Point_axtw) SetFrom(input CurvePointRead) {
 	*p = input.AffineExtended()
 }
 
+// Add performs curve point addition according to the group law.
+// Use p.Add(&x, &y) for p := x + y.
+// TODO: Export variants for specific types
 func (p *Point_axtw) Add(x, y CurvePointRead) {
 	var temp Point_xtw
 	temp.Add(x, y)
 	p.SetFrom(&temp)
 }
 
+// Sub performs curve point addition according to the group law.
+// Use p.Sub(&x, &y) for p := x - y.
+// TODO: Export variants for specific types
 func (p *Point_axtw) Sub(x, y CurvePointRead) {
 	var temp Point_xtw
 	temp.Sub(x, y)
 	p.SetFrom(&temp)
 }
 
+// Neg computes the negative of the point wrt the elliptic curve group law.
+// Use p.Neg(&input) for p := -input.
 func (p *Point_axtw) Neg(input CurvePointRead) {
 	var temp Point_xtw
 	temp.Neg(input)
 	p.SetFrom(&temp)
 }
 
+// Endo computes the efficient order-2 endomorphism on the given point.
 func (p *Point_axtw) Endo(input CurvePointRead) {
 	var temp Point_xtw
 	temp.Endo(input)
 	p.SetFrom(&temp)
 }
 
+// Endo_safe computes the efficient order-2 endomorphism on the given input point (of any coordinate format).
+// This function works even if the input may be a point at infinity; note that the output is never at infinity anyway.
+// Be aware that, depending on interpretation, the statement that the endomorpism acts by multiplication by the constant sqrt(2) mod p253 is only true on the good subgroup.
 func (p *Point_axtw) Endo_safe(input CurvePointRead) {
 	var temp Point_xtw
 	temp.Endo_safe(input)
 	p.SetFrom(&temp)
 }
 
+// EndoEq applies the endomorphism on the given point. p.EndoEq() is shorthand for p.EndoEq(&p)
 func (p *Point_axtw) EndoEq() {
 	var temp Point_xtw
 	temp.computeEndomorphism_ta(p)
 	p.SetFrom(&temp)
 }
 
+// NeqEq replaces the given point by its negative (wrt the elliptic curve group addition law)
 func (p *Point_axtw) NegEq() {
 	p.y.NegEq()
 	p.t.NegEq()
 }
 
+// AddEq adds (via the elliptic curve group addition law) the given curve point x (in any coordinate format) to the received p, overwriting p.
 func (p *Point_axtw) AddEq(x CurvePointRead) {
 	p.Add(p, x)
 }
 
+// SubEq subtracts (via the elliptic curve group addition law) the given curve point x (in any coordinate format) from the received p, overwriting p.
 func (p *Point_axtw) SubEq(x CurvePointRead) {
 	p.Sub(p, x)
 }

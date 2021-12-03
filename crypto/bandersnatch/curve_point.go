@@ -76,7 +76,7 @@ type CurvePointRead interface {
 	IsAtInfinity() bool
 	IsSingular() bool
 	IsEqual(CurvePointRead) bool
-	IsEqualExact(CurvePointRead) bool
+	IsEqual_exact(CurvePointRead) bool
 	AffineExtended() Point_axtw
 	ExtendedTwistedEdwards() Point_xtw
 }

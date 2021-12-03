@@ -12,7 +12,8 @@ var ErrXNotOnCurve = errors.New("received affine X coordinate does not correspon
 
 var ErrNotInSubgroup = errors.New("deserialization: received affine X and Y coordinates do not correspond to a point in the p253 subgroup of the Bandersnatch curve")
 var ErrNotOnCurve = errors.New("deserialization: received affine X and Y corrdinates do not correspond to a point on the Bandersnatch curve")
-var ErrWrongSignY = errors.New("deserialization: encountered affine Y coordinate with unexpected Sign bit.")
+var ErrWrongSignY = errors.New("deserialization: encountered affine Y coordinate with unexpected Sign bit")
+var ErrUnrecognizedFormat = errors.New("deserialization: could not automatically detect serialization format")
 
 func (p *Point_axtw) specialSerialzeXCoo_a() (ret FieldElement) {
 	ret = p.x
@@ -175,6 +176,49 @@ func (p *Point_axtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read 
 		}
 	}
 	return
+}
+
+func (p *Point_axtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error) {
+	var fieldElement_read FieldElement
+	var prefix_read PrefixBits
+	var temp Point_axtw
+	bytes_read, prefix_read, err = fieldElement_read.deserializeAndGetPrefix(input, 1, binary.BigEndian)
+	if err == ErrNonNormalizedDeserialization {
+		err = ErrUnrecognizedFormat
+	}
+	if err != nil {
+		return
+	}
+	if prefix_read == PrefixBits(0b0) {
+		temp, err = affineFromXSignY(&fieldElement_read, trusted)
+		if err != nil {
+			*p = temp
+		}
+		return
+	} else if prefix_read == PrefixBits(0b1) {
+		if fieldElement_read.Sign() < 0 {
+			err = ErrUnrecognizedFormat
+			return
+		}
+		// Actually, the prefix must have beein 0b10, since otherwise we would either hit ErrNonNormalizedDeserialization or the Sign() < 0 above.
+		var fieldElement2_read FieldElement
+		var bytes_just_read int
+		bytes_just_read, err = fieldElement2_read.DeserializeWithPrefix(input, PrefixBits(0b0), 1, binary.BigEndian)
+		bytes_read += bytes_just_read
+		if err == ErrNonNormalizedDeserialization {
+			err = ErrUnrecognizedFormat
+		}
+		if err != nil {
+			return
+		}
+		temp, err = affineFromXYSignY(&fieldElement2_read, &fieldElement_read, trusted)
+		if err == nil {
+			*p = temp
+		}
+		return
+	} else {
+		panic("This cannot happen")
+	}
 }
 
 func recoverYFromXAffine(x *FieldElement, checkSubgroup bool) (y FieldElement, err error) {
