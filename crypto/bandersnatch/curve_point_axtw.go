@@ -142,6 +142,11 @@ func (p *Point_axtw) SetFrom(input CurvePointRead) {
 	*p = input.AffineExtended()
 }
 
+func (p *Point_axtw) Clone() CurvePointRead {
+	p_copy := *p
+	return &p_copy
+}
+
 // Add performs curve point addition according to the group law.
 // Use p.Add(&x, &y) for p := x + y.
 // TODO: Export variants for specific types

@@ -112,6 +112,11 @@ func (P *Point_efgh) IsNeutralElement() bool {
 	return false
 }
 
+func (P *Point_efgh) Clone() CurvePointRead {
+	p_copy := *P
+	return &p_copy
+}
+
 func (P *Point_efgh) IsNeutralElement_exact() bool {
 	return P.IsNeutralElement() && P.f.IsEqual(&P.h)
 }

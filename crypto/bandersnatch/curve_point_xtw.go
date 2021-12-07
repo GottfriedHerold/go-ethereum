@@ -169,6 +169,11 @@ func (P *Point_xtw) IsNeutralElement() bool {
 	return false
 }
 
+func (p *Point_xtw) Clone() CurvePointRead {
+	p_copy := *p
+	return &p_copy
+}
+
 // IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
 // Returns false for singularity x==y==t==z==0
 func (P *Point_xtw) IsNeutralElement_exact() bool {

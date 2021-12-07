@@ -79,6 +79,7 @@ type CurvePointRead interface {
 	IsEqual_exact(CurvePointRead) bool
 	AffineExtended() Point_axtw
 	ExtendedTwistedEdwards() Point_xtw
+	Clone() CurvePointRead
 }
 
 type CurvePointWrite interface {
