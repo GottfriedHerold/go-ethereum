@@ -250,6 +250,8 @@ func recoverYFromXAffine(x *FieldElement, checkSubgroup bool) (y FieldElement, e
 
 // isPointOnCurve checks whether the given point is actually on the curve.
 // Note: This does NOT verify that the point is in the correct subgroup.
+// Note2: On encountering singular values (0:0:0:0), we just return false *without* calling any error handler.
+// Note3: This function is only provided for xtw
 func (p *Point_xtw) isPointOnCurve() bool {
 
 	// Singular points are not on the curve
