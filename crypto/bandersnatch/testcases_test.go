@@ -1,7 +1,6 @@
 package bandersnatch
 
 import (
-	"fmt"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -14,14 +13,19 @@ const (
 	Case_singular PointFlags = 1 << iota
 	Case_infinite
 	Case_2torsion
-	Case_fullcurve
+	Case_outside_p253
+	Case_outside_goodgroup
 	Case_equal_exact
 	Case_equal
+	Case_zero
 	Case_zero_exact
 	Case_random
-	Case_goodcoset
 	Case_differenceInfinite
 )
+
+func (flags PointFlags) CheckFlag(check PointFlags) bool {
+	return flags&check != 0
+}
 
 type PointType reflect.Type
 
@@ -167,22 +171,22 @@ func (in *TestSample) CopyXTWToType(new_type []PointType) (ret TestSample) {
 
 var test_sample_N = MakeSample1(
 	&NeutralElement_xtw,
-	PointFlags(Case_zero_exact)|PointFlags(Case_2torsion),
+	Case_zero_exact|Case_2torsion|Case_zero,
 	"Neutral Element")
 
 var test_sample_E1 = MakeSample1(
 	&exceptionalPoint_1_xtw,
-	PointFlags(Case_infinite)|PointFlags(Case_2torsion)|PointFlags(Case_fullcurve),
+	Case_infinite|Case_2torsion|Case_outside_goodgroup|Case_outside_p253,
 	"Infinte 2-torsion point 1")
 
 var test_sample_E2 = MakeSample1(
 	&exceptionalPoint_2_xtw,
-	PointFlags(Case_infinite)|PointFlags(Case_2torsion)|PointFlags(Case_fullcurve),
+	Case_infinite|Case_2torsion|Case_outside_goodgroup|Case_outside_p253,
 	"Infinte 2-torsion point 2")
 
 var test_sample_A = MakeSample1(
 	&orderTwoPoint_xtw,
-	PointFlags(Case_2torsion)|PointFlags(Case_goodcoset),
+	Case_2torsion|Case_outside_p253|Case_zero,
 	"Affine 2-torsion point")
 
 var test_sample_NN = ZipSample(test_sample_N, test_sample_N, Case_equal|Case_equal_exact)
@@ -261,13 +265,13 @@ func make_random_test_sample_xtw(rnd *rand.Rand, subgroup bool) TestSample {
 		r.clearCofactor2()
 		if rnd.Intn(2) == 0 {
 			r.AddEq(&orderTwoPoint_xtw)
-			flags |= PointFlags(Case_goodcoset)
+			flags |= PointFlags(Case_outside_p253)
 			comment = "Random Point (good coset)"
 		} else {
 			comment = "Random Point (exact subgroup)"
 		}
 	} else {
-		flags |= PointFlags(Case_fullcurve)
+		flags |= PointFlags(Case_outside_goodgroup)
 		comment = "Random point (full curve)"
 	}
 	return MakeSample1(&r, flags, comment)
@@ -379,7 +383,7 @@ func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointT
 	s2.Len = 1
 	s2.Comment = s1.Comment + ", differs by E1"
 	s2.Flags = make([]PointFlags, 1)
-	s2.Flags[0] = s1.Flags[0] | Case_fullcurve
+	s2.Flags[0] = s1.Flags[0] | Case_outside_goodgroup
 	s2.Points = make([]CurvePointRead, 1)
 
 	var p2 Point_xtw
@@ -435,28 +439,28 @@ func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointT
 		p2.Add(s1.Points[0], &orderTwoPoint_xtw)
 		s2.Points[0] = &p2
 		s2.Comment += "P2 = P1+A"
-		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_goodcoset|Case_equal))
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_outside_p253|Case_equal))
 
 		s1 = make_random_test_sample(drng, false, pointTypeXTW)
 		s2 = s1.Clone()
 		p2.Add(s1.Points[0], &orderTwoPoint_xtw)
 		s2.Points[0] = &p2
 		s2.Comment += "P2 = P1+A"
-		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_goodcoset|Case_equal))
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_outside_p253|Case_equal))
 
 		s1 = make_random_test_sample(drng, true, pointTypeXTW)
 		s2 = s1.Clone()
 		p2.Sub(&orderTwoPoint_xtw, s1.Points[0])
 		s2.Points[0] = &p2
 		s2.Comment += "P2 + P1 = A"
-		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_goodcoset))
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_outside_p253))
 
 		s1 = make_random_test_sample(drng, false, pointTypeXTW)
 		s2 = s1.Clone()
 		p2.Sub(&orderTwoPoint_xtw, s1.Points[0])
 		s2.Points[0] = &p2
 		s2.Comment += "P2 + P1 = A"
-		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_goodcoset))
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(s1, s2, Case_outside_p253))
 	}
 
 	drng = rand.New(rand.NewSource(201))
@@ -491,14 +495,18 @@ func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointT
 	return
 }
 
+/*
 func TestMakeSample(t *testing.T) {
 	x := MakeTestSamples2(10, pointTypeXTW, pointTypeAXTW, Case_infinite)
 	for _, item := range x {
 		fmt.Println(item)
 	}
 }
+*/
 
-func run_tests_on_samples(f func(TestSample) bool, t *testing.T, samples []TestSample, err_string string) {
+type checkfunction func(TestSample) bool
+
+func run_tests_on_samples(f checkfunction, t *testing.T, samples []TestSample, err_string string) {
 	var num_errors int = 0
 	var failed bool = false
 	for _, samp := range samples {
@@ -514,4 +522,14 @@ func run_tests_on_samples(f func(TestSample) bool, t *testing.T, samples []TestS
 	if failed {
 		t.Fatal(" and " + strconv.Itoa(num_errors) + "further errors")
 	}
+}
+
+func make_samples1_and_run_tests(t *testing.T, f checkfunction, err_string string, point_type1 PointType, random_size int, excluded_flags PointFlags) {
+	Samples := MakeTestSamples1(random_size, point_type1, excluded_flags)
+	run_tests_on_samples(f, t, Samples, err_string)
+}
+
+func make_samples2_and_run_tests(t *testing.T, f checkfunction, err_string string, point_type1 PointType, point_type2 PointType, random_size int, excluded_flags PointFlags) {
+	Samples := MakeTestSamples2(random_size, point_type1, point_type2, excluded_flags)
+	run_tests_on_samples(f, t, Samples, err_string)
 }
