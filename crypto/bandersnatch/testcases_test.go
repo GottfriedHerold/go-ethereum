@@ -366,6 +366,28 @@ func MakeTestSamples1(random_size int, point_type1 PointType, exclude_flags Poin
 	return
 }
 
+func MakeTestSamples3(random_size int, point_type1 PointType, point_type2 PointType, point_type3 PointType, exclude_flags PointFlags) (ret []TestSample) {
+	var point_types []PointType = []PointType{point_type1, point_type2, point_type3}
+	l2 := MakeTestSamples2(random_size, point_type1, point_type2, exclude_flags)
+	var drng *rand.Rand = rand.New(rand.NewSource(301))
+	for _, item := range l2 {
+		p := make_random_test_sample(drng, true, point_type3)
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(item, p, 0))
+		p = make_random_test_sample(drng, false, point_type3)
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(item, p, 0))
+	}
+
+	drng = rand.New(rand.NewSource(302))
+	l2 = MakeTestSamples2(random_size, point_type2, point_type3, exclude_flags)
+	for _, item := range l2 {
+		p := make_random_test_sample(drng, true, point_type1)
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(p, item, 0))
+		p = make_random_test_sample(drng, false, point_type1)
+		AppendTestSamples(&ret, exclude_flags, point_types, ZipSample(p, item, 0))
+	}
+	return
+}
+
 func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointType, exclude_flags PointFlags) (ret []TestSample) {
 	var point_types []PointType = []PointType{point_type1, point_type2}
 	AppendTestSamples(&ret, exclude_flags, point_types,

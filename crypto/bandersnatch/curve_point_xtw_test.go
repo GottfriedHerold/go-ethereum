@@ -61,8 +61,8 @@ func TestPointsOnCurve(t *testing.T) {
 	if point.isPointOnCurve() {
 		t.Fatal("modified example point is still on curve")
 	}
-
 }
+
 
 /*
 OLD TESTS -- They work, but we want to have coverage displayed for the new tests only
