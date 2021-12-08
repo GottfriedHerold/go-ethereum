@@ -161,8 +161,8 @@ func (P *Point_xtw) IsNeutralElement() bool {
 	// NOTE: This asserts that P is in the correct subgroup or that we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
 	if P.x.IsZero() {
 		if P.y.IsZero() {
-			// TODO: Handle error: Singular point
-			return false
+			// Handle error: Singular point
+			return handle_errors("compared invalid xtw point to zero", true, P)
 		}
 		return true
 	}
@@ -179,8 +179,11 @@ func (p *Point_xtw) Clone() CurvePointRead {
 func (P *Point_xtw) IsNeutralElement_exact() bool {
 	// We check this separately, because we want that specific behaviour on singularity.
 	if P.z.IsZero() {
-		// TODO: Check for singularity and handle errors
-		return false
+		if P.IsSingular() {
+			return handle_errors("compared invalid xtw point to zero exactly", true, P)
+		} else {
+			return false
+		}
 	}
 	return P.x.IsZero() && P.t.IsZero() && P.y.IsEqual(&P.z)
 }
@@ -190,6 +193,7 @@ func (P *Point_xtw) SetNeutral() {
 	*P = NeutralElement_xtw
 }
 
+// TODO: Remove this function?
 // clearCofactor4 multiplies a point (which need not be in the subgroup) and multiplies it by the cofactor 4 to ensure the result is in the subgroup.
 func (p *Point_xtw) clearCofactor4() {
 	p.double_tt(p)
@@ -284,7 +288,7 @@ func (p *Point_xtw) Endo(from CurvePointRead) {
 // Endo_safe computes the GLV endomorphism and works for all points.
 func (output *Point_xtw) Endo_safe(input CurvePointRead) {
 	if input.IsSingular() {
-		// TODO: Handle error
+		_ = handle_errors("Computing endomorphism on invalid point", false, input)
 		*output = Point_xtw{} // NaN-like behaviour.
 	} else if input.IsAtInfinity() {
 		*output = orderTwoPoint_xtw
@@ -295,9 +299,18 @@ func (output *Point_xtw) Endo_safe(input CurvePointRead) {
 
 func (p *Point_xtw) IsAtInfinity() bool {
 	if p.z.IsZero() {
+		if p.IsSingular() {
+			return handle_errors("checking whether invalid point is at infinity", false, p)
+		}
+
+		// The only valid points (albeit non in subgroup) with z == 0 are the two exceptional points.
+		// We catch x==y==0 above (which already means the user of the library screwed up).
+		// Anything else means we screwed up even worse.
 		if p.t.IsZero() {
-			// TODO: Handle error: p is probably singularity
-			return false
+			panic("Point with z==t==0 encountered, but (x,y) != (0,0). This must never happen.")
+		}
+		if p.x.IsZero() {
+			panic("Point with z==x==0 encountered, but (x,y) != (0,0). This must never happen.")
 		}
 		return true
 	}
@@ -312,8 +325,7 @@ func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
 		return p.is_equal_ta(other_real)
 	default:
 		if p.IsSingular() || other.IsSingular() {
-			// TODO: Error handling
-			return false
+			return handle_errors("point was invalid when comparing points for equality", true, p, other)
 		}
 		var temp1, temp2 FieldElement
 		var temp_fe FieldElement = other_real.Y_projective()
@@ -326,8 +338,7 @@ func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
 
 func (p *Point_xtw) IsEqual_exact(other CurvePointRead) bool {
 	if p.IsSingular() || other.IsSingular() {
-		// TODO: Error handling
-		return false
+		return handle_errors("point was invalid when comparing points for equality", true, p, other)
 	}
 	switch other_real := other.(type) {
 	case *Point_xtw:

@@ -120,6 +120,14 @@ func checkfun_clone(s TestSample) bool {
 	return point_copy.IsEqual_exact(s.Points[0])
 }
 
+/*
+func checkfun_addition_commutes(s TestSample) bool {
+	if s.Len != 2 {
+		panic("Wrong type of sample for check")
+	}
+}
+*/
+
 func test_general(t *testing.T, pointType PointType, excluded_flags PointFlags) {
 	point_string := PointTypeToString(pointType)
 	make_samples1_and_run_tests(t, checkfun_recognize_neutral, "Did not recognize neutral element for "+point_string, pointType, 10, excluded_flags)
