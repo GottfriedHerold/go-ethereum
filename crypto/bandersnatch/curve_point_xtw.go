@@ -83,49 +83,49 @@ var (
 )
 
 // X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates.
-func (P *Point_xtw) X_affine() FieldElement {
-	P.makeAffine_x()
-	return P.x
+func (p *Point_xtw) X_affine() FieldElement {
+	p.makeAffine_x()
+	return p.x
 }
 
 // Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates.
-func (P *Point_xtw) Y_affine() FieldElement {
-	P.makeAffine_x()
-	return P.y
+func (p *Point_xtw) Y_affine() FieldElement {
+	p.makeAffine_x()
+	return p.y
 }
 
 // T_affine returns the T coordinate (i.e. T=XY) of the given point in affine twisted Edwards coordinates.
-func (P *Point_xtw) T_affine() FieldElement {
-	P.makeAffine_x()
-	return P.t
+func (p *Point_xtw) T_affine() FieldElement {
+	p.makeAffine_x()
+	return p.t
 }
 
 // X_projective returns the X coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_xtw) X_projective() FieldElement {
-	return P.x
+func (p *Point_xtw) X_projective() FieldElement {
+	return p.x
 }
 
 // Y_projective returns the Y coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_xtw) Y_projective() FieldElement {
-	return P.y
+func (p *Point_xtw) Y_projective() FieldElement {
+	return p.y
 }
 
 // Z_projective returns the Z coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_xtw) Z_projective() FieldElement {
-	return P.z
+func (p *Point_xtw) Z_projective() FieldElement {
+	return p.z
 }
 
 // T_projective returns the T coordinate of the given point P in projective twisted Edwards coordinates (i.e. T = XY/Z).
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_xtw) T_projective() FieldElement {
-	return P.t
+func (p *Point_xtw) T_projective() FieldElement {
+	return p.t
 }
 
 // Q: Should IsAffine and MakeAffine be exported in the first place?
@@ -134,10 +134,16 @@ func (P *Point_xtw) T_projective() FieldElement {
 
 /* In addition, we might consider normalizing to y==1 rather than z==1 */
 
-func (P *Point_xtw) MakeAffine() {
-	if !P.IsAffine() {
-		P.makeAffine_x()
+func (p *Point_xtw) MakeAffine() {
+	if !p.IsAffine() {
+		p.makeAffine_x()
 	}
+}
+
+// String prints the point in X:Y:T:Z - format
+func (p *Point_xtw) String() string {
+	// Not the most efficient way, but good enough.
+	return p.x.String() + ":" + p.y.String() + ":" + p.t.String() + ":" + p.z.String()
 }
 
 func (p *Point_xtw) IsAffine() bool {
@@ -174,23 +180,26 @@ func (p *Point_xtw) Clone() CurvePointRead {
 	return &p_copy
 }
 
-// IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
-// Returns false for singularity x==y==t==z==0
-func (P *Point_xtw) IsNeutralElement_exact() bool {
-	// We check this separately, because we want that specific behaviour on singularity.
-	if P.z.IsZero() {
-		if P.IsSingular() {
-			return handle_errors("compared invalid xtw point to zero exactly", true, P)
-		} else {
-			return false
-		}
+// IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A.
+//  We only assume that x,y,t,z satisfy the curve equations.
+func (p *Point_xtw) IsNeutralElement_exact() bool {
+	if !p.x.IsZero() {
+		return false
 	}
-	return P.x.IsZero() && P.t.IsZero() && P.y.IsEqual(&P.z)
+	if p.IsSingular() {
+		return handle_errors("compared invalid xtw point to zero exactly", true, p)
+	}
+	if !p.t.IsZero() {
+		panic("Non-NaP xtw point with x==0, but t!=0 encountered.")
+	}
+	// we know x==0, y!=0 (because otherwise, we have a NaP), t==0.
+	// This implies z == +/- y
+	return p.y.IsEqual(&p.z)
 }
 
 // SetNeutral sets the Point P to the neutral element of the curve.
-func (P *Point_xtw) SetNeutral() {
-	*P = NeutralElement_xtw
+func (p *Point_xtw) SetNeutral() {
+	*p = NeutralElement_xtw
 }
 
 // TODO: Remove this function?
@@ -298,19 +307,18 @@ func (output *Point_xtw) Endo_safe(input CurvePointRead) {
 }
 
 func (p *Point_xtw) IsAtInfinity() bool {
+	if p.IsSingular() {
+		return handle_errors("checking whether NaP point is at infinity", false, p)
+	}
 	if p.z.IsZero() {
-		if p.IsSingular() {
-			return handle_errors("checking whether invalid point is at infinity", false, p)
-		}
-
-		// The only valid points (albeit non in subgroup) with z == 0 are the two exceptional points.
+		// The only valid points (albeit not in subgroup) with z == 0 are the two exceptional points with z==y==0
 		// We catch x==y==0 above (which already means the user of the library screwed up).
 		// Anything else means we screwed up even worse.
 		if p.t.IsZero() {
-			panic("Point with z==t==0 encountered, but (x,y) != (0,0). This must never happen.")
+			panic("xtw point with z==t==0 encountered, but (x,y) != (0,0), so this was not NaP. This must never happen.")
 		}
 		if p.x.IsZero() {
-			panic("Point with z==x==0 encountered, but (x,y) != (0,0). This must never happen.")
+			panic("xtw point with z==0 and x==0 encountered, but y!=0, so this was not NaP. This must never happen.")
 		}
 		return true
 	}
@@ -356,7 +364,7 @@ func (p *Point_xtw) EndoEq() {
 }
 
 func (p *Point_xtw) NegEq() {
-	p.y.NegEq()
+	p.x.NegEq()
 	p.t.NegEq()
 }
 

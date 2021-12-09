@@ -1,6 +1,7 @@
 package bandersnatch
 
 import (
+	"fmt"
 	"math/big"
 )
 
@@ -80,6 +81,7 @@ type CurvePointRead interface {
 	AffineExtended() Point_axtw
 	ExtendedTwistedEdwards() Point_xtw
 	Clone() CurvePointRead
+	fmt.Stringer
 }
 
 type CurvePointWrite interface {

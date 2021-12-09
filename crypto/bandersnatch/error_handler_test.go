@@ -31,10 +31,10 @@ func TestErrorHandling(t *testing.T) {
 	if x != 8 {
 		t.Fatal("Did not get back installed error handler")
 	}
-	if expectError(do_nothing) != false {
+	if wasInvalidPointEncountered(do_nothing) != false {
 		t.Fatal("expectError should have returned false")
 	}
-	if expectError(call_error) != true {
+	if wasInvalidPointEncountered(call_error) != true {
 		t.Fatal("exptecError should have returned true")
 	}
 	if x != 11 {

@@ -8,7 +8,7 @@ package bandersnatch
 */
 
 // check_equality_of_quotients checks whether x1/y1 == x2/y2. The second err argument is 0 unless x1==y1==0 (err==1) or x2==y2==0 (err==2) or both (err==3). If err != 0, always returns false.
-// If no err==0 and y1==y2==0, returns true.
+// In the special case where both x1!=0, x2!=0 (but may be different) and y1==y2==0, returns true and err = 0.
 func check_equality_of_quotients(x1, y1, x2, y2 *FieldElement) (result bool, err int) {
 	var temp1, temp2 FieldElement
 	temp1.Mul(x1, y2)
@@ -16,13 +16,15 @@ func check_equality_of_quotients(x1, y1, x2, y2 *FieldElement) (result bool, err
 	err = 0
 	if temp1.IsEqual(&temp2) {
 		result = true
-		if y1.IsZero() && x1.IsZero() {
-			result = false
-			err += 1
-		}
-		if y2.IsZero() && x2.IsZero() {
-			result = false
-			err += 2
+		if temp1.IsZero() {
+			if y1.IsZero() && x1.IsZero() {
+				result = false
+				err += 1
+			}
+			if y2.IsZero() && x2.IsZero() {
+				result = false
+				err += 2
+			}
 		}
 	} else {
 		result = false
@@ -33,15 +35,33 @@ func check_equality_of_quotients(x1, y1, x2, y2 *FieldElement) (result bool, err
 // is_equal_tt checks whether two points in the subgroup are equal. On the p523+A subgroup, it checks for equality modulo the affine order-2 point.
 func (p1 *Point_xtw) is_equal_tt(p2 *Point_xtw) bool {
 	// We check whether x1/y1 == x2/y2. Note that the map Curve -> Field given by x/y is 2:1 with preimages of the form {P, P+A} for the affine 2 torsion point A.
-	result, _ := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
-	// TODO: Handle error
+	result, error_code := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
+	if error_code != 0 {
+		switch error_code {
+		case 1:
+			return handle_errors("When comparing two xtw points, the first one was invalid", true, p1, p2)
+		case 2:
+			return handle_errors("When comparing two xtw points, the second one was invalid", true, p1, p2)
+		case 3:
+			return handle_errors("When comparing two xtw points, both were invalid", true, p1, p2)
+		}
+	}
 	return result
 }
 
 func (p1 *Point_xtw) is_equal_ta(p2 *Point_axtw) bool {
 	// We check whether x1/y1 == x2/y2. Note that the map Curve -> Field given by x/y is 2:1 with preimages of the form {P, P+A} for the affine 2 torsion point A.
-	result, _ := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
-	// TODO: Handle error
+	result, error_code := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
+	if error_code != 0 {
+		switch error_code {
+		case 1:
+			return handle_errors("When comparing an axtw and xtw point, the axtw one was invalid", true, p1, p2)
+		case 2:
+			return handle_errors("When comparing an axtw and xtw point, the xtw one was invalid", true, p1, p2)
+		case 3:
+			return handle_errors("When comparing an axtw and xtw point, both were invalid", true, p1, p2)
+		}
+	}
 	return result
 }
 
@@ -50,10 +70,20 @@ func (p1 *Point_axtw) is_equal_at(p2 *Point_xtw) bool {
 }
 
 func (p1 *Point_axtw) is_equal_aa(p2 *Point_axtw) bool {
-	// Due to z1==z2 == 1, we actually have (x1,y1) == +/- (x2,y2)
 	// We check whether x1/y1 == x2/y2. Note that the map Curve -> Field given by x/y is 2:1 with preimages of the form {P, P+A} for the affine 2 torsion point A.
-	result, _ := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
-	// TODO: Handle error
+
+	// Note: Due to z1==z2 == 1, we actually have (x1,y1) == +/- (x2,y2) on equality. We could use this to speed this up.
+	result, error_code := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
+	if error_code != 0 {
+		switch error_code {
+		case 1:
+			return handle_errors("When comparing two axtw points, the first one was invalid", true, p1, p2)
+		case 2:
+			return handle_errors("When comparing two axtw points, the second one was invalid", true, p1, p2)
+		case 3:
+			return handle_errors("When comparing two axtw points, both were invalid", true, p1, p2)
+		}
+	}
 	return result
 }
 
@@ -61,12 +91,10 @@ func (p1 *Point_axtw) is_equal_aa(p2 *Point_axtw) bool {
 // We assume both points not to be singular.
 func (p1 *Point_xtw) is_equal_exact_tt(p2 *Point_xtw) bool {
 	if p1.IsSingular() {
-		// TODO: Handle error
-		return false
+		return handle_errors("When comparing two xtw points exactly, the first one was invalid", true, p1, p2)
 	}
 	if p2.IsSingular() {
-		// TODO: Handle error
-		return false
+		return handle_errors("When comparing two xtw points exactly, the second one was invalid", true, p1, p2)
 	}
 	var temp1, temp2 FieldElement
 	if p1.z.IsZero() {
@@ -94,6 +122,12 @@ func (p1 *Point_xtw) is_equal_exact_tt(p2 *Point_xtw) bool {
 }
 
 func (p1 *Point_xtw) is_equal_exact_ta(p2 *Point_axtw) bool {
+	if p1.IsSingular() {
+		return handle_errors("When comparing an axtw and xtw point exactly, the xtw one was invalid", true, p1, p2)
+	}
+	if p2.IsSingular() {
+		return handle_errors("When comparing and axtw and xtw point exactly, the axtw one was invalid", true, p1, p2)
+	}
 	if p1.z.IsZero() {
 		return false
 	}
@@ -113,5 +147,11 @@ func (p1 *Point_axtw) is_equal_exact_at(p2 *Point_xtw) bool {
 }
 
 func (p1 *Point_axtw) is_equal_exact_aa(p2 *Point_axtw) bool {
+	if p1.IsSingular() {
+		return handle_errors("When comparing two axtw points, the first one was invalid", true, p1, p2)
+	}
+	if p2.IsSingular() {
+		return handle_errors("When comparing two axtw points, the second one was invalid", true, p1, p2)
+	}
 	return p1.x.IsEqual(&p2.x) && p1.y.IsEqual(&p2.y)
 }

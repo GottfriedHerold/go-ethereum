@@ -44,6 +44,10 @@ func (P *Point_efgh) normalize_affine() {
 	P.g.SetOne()
 }
 
+func (p *Point_efgh) String() string {
+	return "E=" + p.e.String() + " F=" + p.f.String() + " G=" + p.g.String() + " H=" + p.h.String()
+}
+
 func (P *Point_efgh) X_affine() FieldElement {
 	P.normalize_affine()
 	return P.e

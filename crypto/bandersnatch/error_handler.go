@@ -12,15 +12,16 @@ func panic_error_handler(reason string, _ bool, _ ...CurvePointRead) bool {
 	panic(reason)
 }
 
-func expectError(fun func()) bool {
-	old_handler := GetInvalidPointErrorHandler()
+func wasInvalidPointEncountered(fun func()) bool {
+	var old_handler_ptr *InvalidPointErrorHandler // indirection to avoid locking.
 	var error_bit bool = false
 	new_handler := func(reason string, comparison bool, points ...CurvePointRead) bool {
 		error_bit = true
-		return old_handler(reason, comparison, points...)
+		return (*old_handler_ptr)(reason, comparison, points...)
 	}
-	SetInvalidPointErrorHandler(new_handler)
-	defer SetInvalidPointErrorHandler(old_handler)
+	old_handler := SetInvalidPointErrorHandler(new_handler)
+	old_handler_ptr = &old_handler
+	defer SetInvalidPointErrorHandler(*old_handler_ptr)
 	fun()
 	return error_bit
 }
@@ -28,10 +29,12 @@ func expectError(fun func()) bool {
 var current_error_handler InvalidPointErrorHandler = trivial_error_handler
 var error_handler_mutex sync.Mutex
 
-func SetInvalidPointErrorHandler(fun InvalidPointErrorHandler) {
+func SetInvalidPointErrorHandler(new_handler InvalidPointErrorHandler) (old_handler InvalidPointErrorHandler) {
 	error_handler_mutex.Lock()
 	defer error_handler_mutex.Unlock()
-	current_error_handler = fun
+	old_handler = current_error_handler
+	current_error_handler = new_handler
+	return
 }
 
 func GetInvalidPointErrorHandler() InvalidPointErrorHandler {

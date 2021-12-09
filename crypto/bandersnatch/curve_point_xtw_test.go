@@ -6,14 +6,12 @@ import (
 )
 
 func TestPointsOnCurve(t *testing.T) {
-	var f checkfunction = func(s TestSample) bool {
-		if s.Len != 1 {
-			panic(0)
-		}
+	var f checkfunction = func(s TestSample) (bool, string) {
+		s.AssertNumberOfPoints(1)
 		singular := s.Flags[0].CheckFlag(Case_singular)
-		// var point Point_xtw
+		// isPointOnCurve is only provided for pointTypeXTW
 		var point Point_xtw = *(s.Points[0].(*Point_xtw))
-		return singular != point.isPointOnCurve()
+		return singular != point.isPointOnCurve(), ""
 	}
 	make_samples1_and_run_tests(t, f, "Did not recognize points as being on the curve", pointTypeXTW, 10, 0)
 	point := example_generator_xtw
@@ -25,44 +23,43 @@ func TestPointsOnCurve(t *testing.T) {
 	// Modifiy each coo and check whether it is still on the curve.
 	point.x.setRandomUnsafe(drng)
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with wrong x-coo is still on curve")
 	}
 	point.x.SetZero()
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with zeroed x-coo is still on curve")
 	}
 
 	point = example_generator_xtw
 	point.y.setRandomUnsafe(drng)
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point wth wrong y-coo is still on curve")
 	}
 	point.y.SetZero()
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with zeroed y-coo is still on curve")
 	}
 
 	point = example_generator_xtw
 	point.t.setRandomUnsafe(drng)
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with wrong t-coo is still on curve")
 	}
 	point.t.SetZero()
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with zeroed t-coo is still on curve")
 	}
 
 	point = example_generator_xtw
 	point.z.setRandomUnsafe(drng)
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with wrong z-coo is still on curve")
 	}
 	point.z.SetZero()
 	if point.isPointOnCurve() {
-		t.Fatal("modified example point is still on curve")
+		t.Fatal("modified example point with zeroed z-coo is still on curve")
 	}
 }
-
 
 /*
 OLD TESTS -- They work, but we want to have coverage displayed for the new tests only

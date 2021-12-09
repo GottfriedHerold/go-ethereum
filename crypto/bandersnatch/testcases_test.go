@@ -3,6 +3,7 @@ package bandersnatch
 import (
 	"math/rand"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"testing"
 )
@@ -62,11 +63,21 @@ func GetPointType(p CurvePointRead) PointType {
 	}
 }
 
+func MakeCurvePointFromType(pointType PointType) CurvePoint {
+	return reflect.New(pointType.Elem()).Interface().(CurvePoint)
+}
+
 type TestSample struct {
 	Points  []CurvePointRead // TODO: CurvePointDebug interface?
 	Flags   []PointFlags
 	Comment string
 	Len     uint
+}
+
+func (s *TestSample) AssertNumberOfPoints(expectedLen int) {
+	if int(s.Len) != expectedLen {
+		panic("Test samples with a different number of curve points per samples expected")
+	}
 }
 
 func (s *TestSample) Clone() (ret TestSample) {
@@ -242,17 +253,26 @@ var test_sample_uninitialized_efgh = MakeSample1(
 func (s *TestSample) String() string {
 	var ret string
 	if s.Len == 0 {
-		return "Empty test sample"
+		return "Empty test sample consisting of 0-tuple of points"
 	}
 	for i := 0; i < int(s.Len); i++ {
 		ret += "Point "
 		ret += strconv.Itoa(i + 1)
-		ret += "("
+		ret += " of type "
 		ret += PointTypeToString(GetPointType(s.Points[i]))
-		ret += ") "
+		ret += ", "
+
 	}
-	ret += "C: "
+	ret += "Comment stored in sample: "
 	ret += s.Comment
+	ret += "\n"
+	for i := 0; i < int(s.Len); i++ {
+		ret += "Representation of Point " + strconv.Itoa(i+1) + " (" + PointTypeToString(GetPointType(s.Points[i])) + ") is "
+		ret += s.Points[i].String()
+		if i+1 < int(s.Len) {
+			ret += "\n"
+		}
+	}
 	return ret
 }
 
@@ -526,23 +546,24 @@ func TestMakeSample(t *testing.T) {
 }
 */
 
-type checkfunction func(TestSample) bool
+type checkfunction func(TestSample) (bool, string)
 
 func run_tests_on_samples(f checkfunction, t *testing.T, samples []TestSample, err_string string) {
 	var num_errors int = 0
 	var failed bool = false
 	for _, samp := range samples {
-		pass := f(samp)
+		pass, error_reason := f(samp)
 		if failed && !pass {
 			num_errors++
 		}
 		if !failed && !pass {
 			failed = true
-			t.Error(err_string + samp.String())
+			t.Error(err_string + "\nAdditional info: " + error_reason + "\nFailed Sample: " + samp.String() + "\nPrinting Stack trace")
+			debug.PrintStack()
 		}
 	}
 	if failed {
-		t.Fatal(" and " + strconv.Itoa(num_errors) + "further errors")
+		t.Fatal(" and " + strconv.Itoa(num_errors) + " further errors")
 	}
 }
 

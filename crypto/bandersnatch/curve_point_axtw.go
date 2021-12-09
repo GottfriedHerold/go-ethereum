@@ -12,33 +12,33 @@ type Point_axtw struct {
 var NeutralElement_axtw Point_axtw = Point_axtw{x: FieldElementZero, y: FieldElementOne, t: FieldElementZero}
 
 // X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates, i.e. X/Z
-func (P *Point_axtw) X_affine() FieldElement {
-	return P.x
+func (p *Point_axtw) X_affine() FieldElement {
+	return p.x
 }
 
 // Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates, i.e. Y/Z
-func (P *Point_axtw) Y_affine() FieldElement {
-	return P.y
+func (p *Point_axtw) Y_affine() FieldElement {
+	return p.y
 }
 
 // X_projective returns the X coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that in general, calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_axtw) X_projective() FieldElement {
-	return P.x
+func (p *Point_axtw) X_projective() FieldElement {
+	return p.x
 }
 
 // Y_projective returns the Y coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_axtw) Y_projective() FieldElement {
-	return P.y
+func (p *Point_axtw) Y_projective() FieldElement {
+	return p.y
 }
 
 // Z_projective returns the Z coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
-func (P *Point_axtw) Z_projective() FieldElement {
+func (p *Point_axtw) Z_projective() FieldElement {
 	return FieldElementOne
 }
 
@@ -63,13 +63,12 @@ func (p *Point_axtw) ExtendedTwistedEdwards() Point_xtw {
 
 // IsNeutralElement checks if the point P is the neutral element of the curve (modulo the identification of P with P+A).
 // Use IsNeutralElement_exact if you do not want this identification.
-func (P *Point_axtw) IsNeutralElement() bool {
+func (p *Point_axtw) IsNeutralElement() bool {
 
 	// NOTE: This asserts that P is in the correct subgroup or that we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
-	if P.x.IsZero() {
-		if P.y.IsZero() {
-			// TODO: Handle error: Singular point
-			return false
+	if p.x.IsZero() {
+		if p.y.IsZero() {
+			return handle_errors("When checking whether an axtw point is the neutral element, an NaP was encountered", true, p)
 		}
 		return true
 	}
@@ -77,13 +76,13 @@ func (P *Point_axtw) IsNeutralElement() bool {
 }
 
 // IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
-func (P *Point_axtw) IsNeutralElement_exact() bool {
-	return P.x.IsZero() && P.y.IsOne() && P.t.IsZero()
+func (p *Point_axtw) IsNeutralElement_exact() bool {
+	return p.x.IsZero() && p.y.IsOne() && p.t.IsZero()
 }
 
 // SetNeutral sets the Point P to the neutral element of the curve.
-func (P *Point_axtw) SetNeutral() {
-	*P = NeutralElement_axtw
+func (p *Point_axtw) SetNeutral() {
+	*p = NeutralElement_axtw
 }
 
 // IsSingular checks whether the point is singular (x==y==0, indeed most likely x==y==t==0). Singular points must never appear if the library is used correctly. They can appear by
@@ -108,8 +107,7 @@ func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 		return p.is_equal_aa(other_real)
 	default:
 		if p.IsSingular() || other.IsSingular() {
-			// TODO: Handle error
-			return false
+			return handle_errors("When comparing an axtw point with another point, a NaP was encountered", true, p, other_real)
 		}
 		var temp1, temp2 FieldElement
 		var temp_fe FieldElement = other_real.Y_projective()
@@ -123,8 +121,7 @@ func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 // IsEqual_exact compares two curve points for equality WITHOUT working modulo the P = P+A identification. The two points do not have to be in the same coordinate format.
 func (p *Point_axtw) IsEqual_exact(other CurvePointRead) bool {
 	if p.IsSingular() || other.IsSingular() {
-		// TODO: Error handling
-		return false
+		return handle_errors("When comparing an axtw point exactly with another point, a NaP was encountered", true, p, other)
 	}
 	switch other_real := other.(type) {
 	case *Point_xtw:
@@ -145,6 +142,12 @@ func (p *Point_axtw) SetFrom(input CurvePointRead) {
 func (p *Point_axtw) Clone() CurvePointRead {
 	p_copy := *p
 	return &p_copy
+}
+
+// String prints the point in X:Y:T - format
+func (p *Point_axtw) String() string {
+	// Not the most efficient way, but good enough.
+	return p.x.String() + ":" + p.y.String() + ":" + p.t.String()
 }
 
 // Add performs curve point addition according to the group law.
