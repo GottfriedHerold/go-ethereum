@@ -34,8 +34,9 @@ func (out *Point_xtw) add_ttt(input1, input2 *Point_xtw) {
 }
 
 func (out *Point_xtw) sub_ttt(input1, input2 *Point_xtw) {
-	out.neg_tt(input2)
-	out.add_ttt(out, input1)
+	var temp Point_xtw // needed because of potential aliasing
+	temp.neg_tt(input2)
+	out.add_ttt(&temp, input1)
 }
 
 // same as above, but with z2==1

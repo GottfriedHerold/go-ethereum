@@ -2,6 +2,7 @@ package bandersnatch
 
 // Point_axtw describes points on the p253-subgroup of the Bandersnatch curve in affine extended twisted Edwards coordinates.
 // Extended means that we additionally store T with T = X*Y.
+// a Point_axtw with coos x:y:t corresponds to a Point_xtw with coos x:y:t:1 (i.e. with z==1). Note that on the p253 subgroup, all points have z!=0.
 type Point_axtw struct {
 	x FieldElement
 	y FieldElement
@@ -65,7 +66,7 @@ func (p *Point_axtw) ExtendedTwistedEdwards() Point_xtw {
 // Use IsNeutralElement_exact if you do not want this identification.
 func (p *Point_axtw) IsNeutralElement() bool {
 
-	// NOTE: This asserts that P is in the correct subgroup or that we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
+	// NOTE: This is only correct since we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
 	if p.x.IsZero() {
 		if p.y.IsZero() {
 			return handle_errors("When checking whether an axtw point is the neutral element, an NaP was encountered", true, p)
@@ -77,10 +78,19 @@ func (p *Point_axtw) IsNeutralElement() bool {
 
 // IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
 func (p *Point_axtw) IsNeutralElement_exact() bool {
-	return p.x.IsZero() && p.y.IsOne() && p.t.IsZero()
+	if !p.x.IsZero() {
+		return false
+	}
+	if p.y.IsZero() {
+		return handle_errors("When checking whether an axtw point is exactly the neutral element, a NaP was encountered", true, p)
+	}
+	if !p.t.IsZero() {
+		panic("axtw Point with x==0, y!=0, t!=0 encountered. This must never happen")
+	}
+	return p.y.IsOne() // p.y must be either 1 or -1
 }
 
-// SetNeutral sets the Point P to the neutral element of the curve.
+// SetNeutral sets the Point p to the neutral element of the curve.
 func (p *Point_axtw) SetNeutral() {
 	*p = NeutralElement_axtw
 }
@@ -94,6 +104,9 @@ func (p *Point_axtw) IsSingular() bool {
 
 // IsAtInfinity tests whether the point is an infinite (neccessarily order-2) point. Since these points cannot be represented in affine coordinates in the first place, this always returns false.
 func (p *Point_axtw) IsAtInfinity() bool {
+	if p.IsSingular() {
+		return handle_errors("When chekcking whether an axtw point is infinite, a NaP was encountered", false, p)
+	}
 	return false
 }
 
@@ -139,6 +152,7 @@ func (p *Point_axtw) SetFrom(input CurvePointRead) {
 	*p = input.AffineExtended()
 }
 
+// Clone creates a copy of the given point as a CurvePointRead. (Be aware that this interface stores pointers)
 func (p *Point_axtw) Clone() CurvePointRead {
 	p_copy := *p
 	return &p_copy

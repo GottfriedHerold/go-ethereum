@@ -93,6 +93,7 @@ type CurvePointWrite interface {
 	SubEq(CurvePointRead)
 	Neg(CurvePointRead)
 	Endo(CurvePointRead)
+	Endo_safe(CurvePointRead)
 	EndoEq()
 	// ClearCofactor()
 }
