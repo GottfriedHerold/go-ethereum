@@ -89,5 +89,5 @@ func (out *Point_xtw) add_taa(input1 *Point_axtw, input2 *Point_axtw) {
 	out.y.Mul(&G, &H) // Y3 = G * H
 	out.t.Mul(&E, &H) // T3 = E * H
 	H.Square(&C)
-	out.z.Sub(&FieldElementOne, &C) // Z3 = F * G == 1 - C^2
+	out.z.Sub(&FieldElementOne, &H) // Z3 = F * G == 1 - C^2
 }

@@ -228,10 +228,22 @@ func (p *Point_xtw) Add(x CurvePointRead, y CurvePointRead) {
 		switch y_real := y.(type) {
 		case *Point_xtw:
 			p.add_ttt(x_real, y_real)
+		case *Point_axtw:
+			p.add_tta(x_real, y_real)
 		default:
 			var y_temp Point_xtw
 			y_temp.SetFrom(y_real)
 			p.add_ttt(x_real, &y_temp)
+		}
+	case *Point_axtw:
+		switch y_real := y.(type) {
+		case *Point_xtw:
+			p.add_tta(y_real, x_real)
+		case *Point_axtw:
+			p.add_taa(x_real, y_real)
+		default:
+			y_temp := y_real.ExtendedTwistedEdwards()
+			p.add_tta(&y_temp, x_real)
 		}
 	default: // for x
 		var x_temp Point_xtw
