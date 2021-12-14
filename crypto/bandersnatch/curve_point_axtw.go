@@ -13,22 +13,24 @@ type Point_axtw struct {
 var NeutralElement_axtw Point_axtw = Point_axtw{x: FieldElementZero, y: FieldElementOne, t: FieldElementZero}
 
 // X_projective returns the X coordinate of the given point P in projective twisted Edwards coordinates.
-// Note that in general, calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
-// so callers must not interleave calling other functions.
+// Since Point_axtw stores affine coordinates, this is the same as X_affine()
 func (p *Point_axtw) X_projective() FieldElement {
 	return p.x
 }
 
 // Y_projective returns the Y coordinate of the given point P in projective twisted Edwards coordinates.
-// Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
-// so callers must not interleave calling other functions.
+// Since Point_axtw stores affine coordinates, this is the same as Y_affine()
 func (p *Point_axtw) Y_projective() FieldElement {
 	return p.y
 }
 
+// T_projective returns the T=X*Y coordinate of the given point P in projective twisted Edwards coordinates.
+func (p *Point_axtw) T_projective() FieldElement {
+	return p.t
+}
+
 // Z_projective returns the Z coordinate of the given point P in projective twisted Edwards coordinates.
-// Note that calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
-// so callers must not interleave calling other functions.
+// Since Point_axtw stores affine coordinates, this always returns 1.
 func (p *Point_axtw) Z_projective() FieldElement {
 	return FieldElementOne
 }
