@@ -442,7 +442,7 @@ func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointT
 
 	var p2 Point_xtw
 	p2.Add(s1.Points[0], &exceptionalPoint_1_xtw) // We might consider writing down the coos directly
-	if p2.IsSingular() {
+	if p2.IsNaP() {
 		panic("Error while creating sample points for tests")
 	}
 	s2.Points[0] = &p2

@@ -24,7 +24,7 @@ func (out *Point_xtw) addNaive_ttt(input1, input2 *Point_xtw) {
 	denom_common.Mul(&x1, &x2)
 	denom_common.MulEq(&y1)
 	denom_common.MulEq(&y2)
-	denom_common.MulEq(&TwistedEdwardsD_fe) // denom_common == dx1x2y1y2
+	denom_common.MulEq(&CurveParameterD_fe) // denom_common == dx1x2y1y2
 
 	var denom_x, denom_y bsFieldElement_64
 	denom_x.Add(&bsFieldElement_64_one, &denom_common) // denom_x = 1+dx1x2y1y2

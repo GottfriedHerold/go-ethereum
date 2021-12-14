@@ -2,16 +2,24 @@ package bandersnatch
 
 import "sync"
 
+// InvalidPointErrorHandler is the function type for error handler that can be installed for dealing with NaPs.
+// When such a handler is called, reason is a descriptive error message, comparison tells whether the NaP was detected during a comparison (in which case the return value of the function should be the comparison result),
+// points is a number of relevant points that were involved.
 type InvalidPointErrorHandler func(reason string, comparison bool, points ...CurvePointRead) bool
 
+// empty error handler.
 func trivial_error_handler(string, bool, ...CurvePointRead) bool {
 	return false
 }
 
+// error handler that just panics.
 func panic_error_handler(reason string, _ bool, _ ...CurvePointRead) bool {
+	// Should be also log / output the points?
 	panic(reason)
 }
 
+// was InvalidPointEncountered(f) calls f() and returns whether the napEncountered - error handler was triggered during execution of f.
+// This function is mainly used in testing.
 func wasInvalidPointEncountered(fun func()) bool {
 	var old_handler_ptr *InvalidPointErrorHandler // indirection to avoid locking.
 	var error_bit bool = false
@@ -19,17 +27,21 @@ func wasInvalidPointEncountered(fun func()) bool {
 		error_bit = true
 		return (*old_handler_ptr)(reason, comparison, points...)
 	}
-	old_handler := SetInvalidPointErrorHandler(new_handler)
+	old_handler := SetNaPErrorHandler(new_handler)
 	old_handler_ptr = &old_handler
-	defer SetInvalidPointErrorHandler(*old_handler_ptr)
+	defer SetNaPErrorHandler(*old_handler_ptr)
 	fun()
 	return error_bit
 }
 
+// currently installed NaP error handler. Being a mutable global object, this is protected by mutex.
+// Note that the mutex is not held when the error handler is *called* -- Thread-safety of the error handlers themselves is the duty of the handlers.
+// The mutex only protects the variable itself.
 var current_error_handler InvalidPointErrorHandler = trivial_error_handler
 var error_handler_mutex sync.Mutex
 
-func SetInvalidPointErrorHandler(new_handler InvalidPointErrorHandler) (old_handler InvalidPointErrorHandler) {
+// SetNaPErrorHandler exchanges the currently installed handler that is called when a NaP is encountered with the one provided and returns the previously installed one.
+func SetNaPErrorHandler(new_handler InvalidPointErrorHandler) (old_handler InvalidPointErrorHandler) {
 	error_handler_mutex.Lock()
 	defer error_handler_mutex.Unlock()
 	old_handler = current_error_handler
@@ -37,14 +49,18 @@ func SetInvalidPointErrorHandler(new_handler InvalidPointErrorHandler) (old_hand
 	return
 }
 
-func GetInvalidPointErrorHandler() InvalidPointErrorHandler {
+// GetNaPErrorHandler gets the currently installed error handler for dealing with NaPs.
+func GetNaPErrorHandler() InvalidPointErrorHandler {
 	error_handler_mutex.Lock()
 	defer error_handler_mutex.Unlock()
 	f := current_error_handler
 	return f
 }
 
-func handle_errors(reason string, comparison bool, points ...CurvePointRead) bool {
-	f := GetInvalidPointErrorHandler()
+// This function is called whenever we hit a NaP. reason is an error string, comparison tells whether this was in an (equality or zeroness) comparison, points are relevant points that may be useful for debugging.
+// It calls the user-provided error handler with reason, comparison, points. The output is taken as the comparison result (if the error handler does not panic, false is the reasonable choice) if comparison is true.
+func napEncountered(reason string, comparison bool, points ...CurvePointRead) bool {
+	// Note that this essentially locks the mutex, gets a copy of the handler and releases the mutex before actually calling f.
+	f := GetNaPErrorHandler()
 	return f(reason, comparison, points...)
 }

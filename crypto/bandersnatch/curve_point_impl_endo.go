@@ -15,8 +15,8 @@ func (output *Point_xtw) computeEndomorphism_tt(input *Point_xtw) {
 		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
 
 		// To avoid problems, we verify that the input is valid, as otherwise, we would "heal" an invalid point -> neutral element, which could hide errors.
-		if input.IsSingular() {
-			handle_errors("Computing endomorphism of NaP of type xtw", false, input)
+		if input.IsNaP() {
+			napEncountered("Computing endomorphism of NaP of type xtw", false, input)
 			// output NaP on purpose if the check above did not panic. This means Endo(NaP) = NaP
 			*output = Point_xtw{}
 			return
@@ -52,8 +52,8 @@ func (output *Point_efgh) computeEndomorphism_st(input *Point_xtw) {
 		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
 
 		// To avoid problems, we verify that the input is valid, as otherwise, we would "heal" an invalid point -> neutral element, which could hide errors.
-		if input.IsSingular() {
-			handle_errors("Computing endomorphism of NaP of type xtw", false, input)
+		if input.IsNaP() {
+			napEncountered("Computing endomorphism of NaP of type xtw", false, input)
 			// output NaP on purpose if the check above did not panic. This means Endo(NaP) = NaP
 			*output = Point_efgh{}
 			return
@@ -83,8 +83,8 @@ func (output *Point_xtw) computeEndomorphism_ta(input *Point_axtw) {
 		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
 
 		// To avoid problems, we verify that the input is not singular.
-		if input.IsSingular() {
-			handle_errors("Computing endomorphism of NaP of type axtw", false, input)
+		if input.IsNaP() {
+			napEncountered("Computing endomorphism of NaP of type axtw", false, input)
 			*output = Point_xtw{}
 			return
 		}
@@ -118,8 +118,8 @@ func (output *Point_efgh) computeEndomorphism_sa(input *Point_axtw) {
 		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element
 
 		// To avoid problems, we verify that the input is not singular.
-		if input.IsSingular() {
-			handle_errors("Computing endomorphism of NaP of type axtw", false, input)
+		if input.IsNaP() {
+			napEncountered("Computing endomorphism of NaP of type axtw", false, input)
 			*output = Point_efgh{}
 			return
 		}

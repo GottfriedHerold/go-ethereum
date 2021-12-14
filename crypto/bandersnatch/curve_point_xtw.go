@@ -79,8 +79,8 @@ var (
 // Although we do not need or use this, note that SqrtDDivA_fe := sqrt(d/a) == sqrt(2) - 1 due to the way the bandersnatch curve was constructed.
 var (
 	orderTwoPoint_xtw      Point_xtw = Point_xtw{x: FieldElementZero, y: FieldElementMinusOne, t: FieldElementZero, z: FieldElementOne}
-	exceptionalPoint_1_xtw Point_xtw = Point_xtw{x: SqrtDDivA_fe, y: FieldElementZero, t: FieldElementOne, z: FieldElementZero}
-	exceptionalPoint_2_xtw Point_xtw = Point_xtw{x: SqrtDDivA_fe, y: FieldElementZero, t: FieldElementMinusOne, z: FieldElementZero}
+	exceptionalPoint_1_xtw Point_xtw = Point_xtw{x: squareRootDbyA_fe, y: FieldElementZero, t: FieldElementOne, z: FieldElementZero}
+	exceptionalPoint_2_xtw Point_xtw = Point_xtw{x: squareRootDbyA_fe, y: FieldElementZero, t: FieldElementMinusOne, z: FieldElementZero}
 )
 
 // X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates.
@@ -169,8 +169,8 @@ func (p *Point_xtw) String() string {
 
 // TODO: Remove?
 func (p *Point_xtw) IsAffine() bool {
-	if p.IsSingular() {
-		return handle_errors("Checking affine-ness of NaP", false, p)
+	if p.IsNaP() {
+		return napEncountered("Checking affine-ness of NaP", false, p)
 	}
 	return p.z.IsOne()
 }
@@ -193,7 +193,7 @@ func (P *Point_xtw) IsNeutralElement() bool {
 	if P.x.IsZero() {
 		if P.y.IsZero() {
 			// Handle error: Singular point
-			return handle_errors("compared invalid xtw point to zero", true, P)
+			return napEncountered("compared invalid xtw point to zero", true, P)
 		}
 		return true
 	}
@@ -211,8 +211,8 @@ func (p *Point_xtw) IsNeutralElement_exact() bool {
 	if !p.x.IsZero() {
 		return false
 	}
-	if p.IsSingular() {
-		return handle_errors("compared invalid xtw point to zero exactly", true, p)
+	if p.IsNaP() {
+		return napEncountered("compared invalid xtw point to zero exactly", true, p)
 	}
 	if !p.t.IsZero() {
 		panic("Non-NaP xtw point with x==0, but t!=0 encountered.")
@@ -243,7 +243,7 @@ func (p *Point_xtw) clearCofactor2() {
 // a) performing operations on points that are not in the correct subgroup
 // b) zero-initialized points are singular (Go lacks constructors to fix that).
 // The reason why we check x==y==0 and do not check t,z is due to what happens if we perform mixed additions.
-func (p *Point_xtw) IsSingular() bool {
+func (p *Point_xtw) IsNaP() bool {
 	return p.x.IsZero() && p.y.IsZero()
 }
 
@@ -331,10 +331,10 @@ func (p *Point_xtw) Endo(from CurvePointRead) {
 	}
 }
 
-// Endo_safe computes the GLV endomorphism and works for all points.
-func (output *Point_xtw) Endo_safe(input CurvePointRead) {
-	if input.IsSingular() {
-		_ = handle_errors("Computing endomorphism on invalid point", false, input)
+// Endo_fullCurve computes the GLV endomorphism and works for all points.
+func (output *Point_xtw) Endo_fullCurve(input CurvePointRead) {
+	if input.IsNaP() {
+		_ = napEncountered("Computing endomorphism on invalid point", false, input)
 		*output = Point_xtw{} // NaN-like behaviour.
 	} else if input.IsAtInfinity() {
 		*output = orderTwoPoint_xtw
@@ -344,8 +344,8 @@ func (output *Point_xtw) Endo_safe(input CurvePointRead) {
 }
 
 func (p *Point_xtw) IsAtInfinity() bool {
-	if p.IsSingular() {
-		return handle_errors("checking whether NaP point is at infinity", false, p)
+	if p.IsNaP() {
+		return napEncountered("checking whether NaP point is at infinity", false, p)
 	}
 	if p.z.IsZero() {
 		// The only valid points (albeit not in subgroup) with z == 0 are the two exceptional points with z==y==0
@@ -369,8 +369,8 @@ func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
 	case *Point_axtw:
 		return p.is_equal_ta(other_real)
 	default:
-		if p.IsSingular() || other.IsSingular() {
-			return handle_errors("point was invalid when comparing points for equality", true, p, other)
+		if p.IsNaP() || other.IsNaP() {
+			return napEncountered("point was invalid when comparing points for equality", true, p, other)
 		}
 		var temp1, temp2 FieldElement
 		var temp_fe FieldElement = other_real.Y_projective()
@@ -382,8 +382,8 @@ func (p *Point_xtw) IsEqual(other CurvePointRead) bool {
 }
 
 func (p *Point_xtw) IsEqual_exact(other CurvePointRead) bool {
-	if p.IsSingular() || other.IsSingular() {
-		return handle_errors("point was invalid when comparing points for equality", true, p, other)
+	if p.IsNaP() || other.IsNaP() {
+		return napEncountered("point was invalid when comparing points for equality", true, p, other)
 	}
 	switch other_real := other.(type) {
 	case *Point_xtw:

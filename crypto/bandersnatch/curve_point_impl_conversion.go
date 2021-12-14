@@ -3,8 +3,8 @@ package bandersnatch
 func (p *Point_xtw) makeAffine_x() {
 	var temp FieldElement
 	if p.z.IsZero() {
-		if p.IsSingular() {
-			handle_errors("Try to converting invalid point xtw to coos with z==1", false, p)
+		if p.IsNaP() {
+			napEncountered("Try to converting invalid point xtw to coos with z==1", false, p)
 			*p = Point_xtw{z: FieldElementOne} // invalid point
 			return
 		}

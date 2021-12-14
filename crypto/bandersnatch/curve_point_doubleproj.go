@@ -26,8 +26,8 @@ type Point_efgh struct {
 var (
 	NeutralElement_efgh     = Point_efgh{e: FieldElementZero, f: FieldElementOne, g: FieldElementOne, h: FieldElementOne}
 	orderTwoPoint_efgh      = Point_efgh{e: FieldElementZero, f: FieldElementOne, g: FieldElementOne, h: FieldElementMinusOne}
-	exceptionalPoint_1_efgh = Point_efgh{e: FieldElementOne, f: SqrtDDivA_fe, g: FieldElementZero, h: FieldElementOne}
-	exceptionalPoint_2_efgh = Point_efgh{e: FieldElementOne, f: SqrtDDivA_fe, g: FieldElementZero, h: FieldElementMinusOne}
+	exceptionalPoint_1_efgh = Point_efgh{e: FieldElementOne, f: squareRootDbyA_fe, g: FieldElementZero, h: FieldElementOne}
+	exceptionalPoint_2_efgh = Point_efgh{e: FieldElementOne, f: squareRootDbyA_fe, g: FieldElementZero, h: FieldElementMinusOne}
 )
 
 func (p *Point_efgh) is_normalized() bool {
@@ -41,8 +41,8 @@ func (p *Point_efgh) normalize_affine() {
 	var temp FieldElement
 	temp.Mul(&p.f, &p.g)
 	if temp.IsZero() {
-		if p.IsSingular() {
-			handle_errors("Trying to normalize singular point", false, p)
+		if p.IsNaP() {
+			napEncountered("Trying to normalize singular point", false, p)
 			*p = Point_efgh{}
 			return
 		}
@@ -95,8 +95,8 @@ func (p *Point_efgh) T_affine() (T FieldElement) {
 
 func (p *Point_efgh) IsNeutralElement() bool {
 	// The only valid points with e==0 are the neutral element and the affine order-2 point
-	if p.IsSingular() {
-		return handle_errors("Comparing NaP with neutral element for efgh", true, p)
+	if p.IsNaP() {
+		return napEncountered("Comparing NaP with neutral element for efgh", true, p)
 	}
 	return p.e.IsZero()
 }
@@ -106,8 +106,8 @@ func (p *Point_efgh) IsNeutralElement_exact() bool {
 }
 
 func (p *Point_efgh) IsEqual(other CurvePointRead) bool {
-	if p.IsSingular() || other.IsSingular() {
-		return handle_errors("NaP encountered when comparing efgh-point with other point", true, p, other)
+	if p.IsNaP() || other.IsNaP() {
+		return napEncountered("NaP encountered when comparing efgh-point with other point", true, p, other)
 	}
 	switch other_real := other.(type) {
 	default:
@@ -128,8 +128,8 @@ func (p *Point_efgh) IsEqual_exact(other CurvePointRead) bool {
 }
 
 func (p *Point_efgh) IsAtInfinity() bool {
-	if p.IsSingular() {
-		return handle_errors("NaP encountered when asking where efgh-point is at infinity", true, p)
+	if p.IsNaP() {
+		return napEncountered("NaP encountered when asking where efgh-point is at infinity", true, p)
 	}
 	// The only valid points with g==0 are are those at infinity
 	return p.g.IsZero()
@@ -138,7 +138,7 @@ func (p *Point_efgh) IsAtInfinity() bool {
 // NaP points have either f==h==0 ("true" NaP-type1) or e==g==0 ("true" NaP-type2) or e==h==0 (result of working on affine NaP).
 // Note that no valid points ever have h==0 or f==0.
 
-func (p *Point_efgh) IsSingular() bool {
+func (p *Point_efgh) IsNaP() bool {
 	if p.h.IsZero() {
 		if !(p.f.IsZero() || p.e.IsZero()) {
 			panic("efgh-Point is NaP with h==0, but ef != 0")
@@ -276,7 +276,7 @@ func (p *Point_efgh) Endo(input CurvePointRead) {
 	}
 }
 
-func (p *Point_efgh) Endo_safe(input CurvePointRead) {
+func (p *Point_efgh) Endo_fullCurve(input CurvePointRead) {
 	switch input := input.(type) {
 	case *Point_efgh:
 		if input.IsAtInfinity() {
@@ -352,8 +352,8 @@ func (p *Point_efgh) SetFrom(input CurvePointRead) {
 		p.g.SetOne()
 		p.h = input.y
 	default:
-		if input.IsSingular() {
-			handle_errors("Trying to convert NaP of unknown type to efgh", false, input)
+		if input.IsNaP() {
+			napEncountered("Trying to convert NaP of unknown type to efgh", false, input)
 			*p = Point_efgh{}
 		} else if !input.IsAtInfinity() {
 			p.e = input.X_projective()

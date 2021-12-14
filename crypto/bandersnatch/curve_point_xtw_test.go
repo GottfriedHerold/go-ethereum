@@ -182,10 +182,10 @@ func TestSingularAddition(t *testing.T) {
 	temp3.add_ttt(&temp1, &temp2)
 	temp4.add_ttt(&temp1, &temp1)
 	temp5.add_ttt(&temp4, &exceptionalPoint_1_xtw)
-	if temp1.IsSingular() || temp2.IsSingular() || temp4.IsSingular() || temp5.IsSingular() {
+	if temp1.IsNaP() || temp2.IsNaP() || temp4.IsNaP() || temp5.IsNaP() {
 		t.Fatal("Singular point after Point addition")
 	}
-	if !temp3.IsSingular() {
+	if !temp3.IsNaP() {
 		t.Error("Addition where singularity was expected did not result in singularity.")
 	}
 }
@@ -242,19 +242,19 @@ func TestPsi(t *testing.T) {
 			t.Fatal("Psi is not homomorphic for sum = affine-order-2")
 		}
 
-		result1.Endo_safe(&exceptionalPoint_1_xtw)
+		result1.Endo_fullCurve(&exceptionalPoint_1_xtw)
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Psi(E1) != affine-order-2")
 		}
 		temp2 = makeRandomPointOnCurve_t(drng)
 		temp1.sub_ttt(&exceptionalPoint_1_xtw, &temp2)
-		if temp1.IsSingular() {
+		if temp1.IsNaP() {
 			t.Fatal("Unexpected singularity encountered")
 		}
-		result1.Endo_safe(&temp1)
-		result2.Endo_safe(&temp2)
+		result1.Endo_fullCurve(&temp1)
+		result2.Endo_fullCurve(&temp2)
 		temp3.add_ttt(&temp1, &temp2)
-		if result1.IsSingular() || result2.IsSingular() || temp3.IsSingular() {
+		if result1.IsNaP() || result2.IsNaP() || temp3.IsNaP() {
 			t.Fatal("Unexpected singularity encountered")
 		}
 		if !temp3.is_equal_exact_tt(&exceptionalPoint_1_xtw) {
@@ -264,7 +264,7 @@ func TestPsi(t *testing.T) {
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Homomorphic properties of Psi unsatisfied when sum is E1")
 		}
-		result1.Endo_safe(&exceptionalPoint_2_xtw)
+		result1.Endo_fullCurve(&exceptionalPoint_2_xtw)
 		if !result1.is_equal_exact_tt(&orderTwoPoint_xtw) {
 			t.Fatal("Psi(E2) != affine-order-2 point")
 		}

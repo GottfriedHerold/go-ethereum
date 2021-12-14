@@ -68,7 +68,7 @@ func TestQuotientGroup(t *testing.T) {
 		LegCheck = temp.legendre_check_point()
 		temp.exp_naive_xx(&temp, GroupOrder_Int)
 		var isN, isD, isE1, isE2 int = 0, 0, 0, 0
-		if temp.IsSingular() {
+		if temp.IsNaP() {
 			t.Fatal("p253 * random point resulted in singularity")
 		}
 		if temp.IsNeutralElement_exact() {

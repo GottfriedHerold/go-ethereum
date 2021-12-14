@@ -14,7 +14,7 @@ func (out *Point_xtw) add_ttt(input1, input2 *Point_xtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	D.Mul(&input1.z, &input2.z)  // D = Z1 * Z2
 	E.Add(&input1.x, &input1.y)
 	F.Add(&input2.x, &input2.y) // F serves as temporary
@@ -46,7 +46,7 @@ func (out *Point_efgh) add_stt(input1, input2 *Point_xtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	D.Mul(&input1.z, &input2.z)  // D = Z1 * Z2
 	out.e.Add(&input1.x, &input1.y)
 	out.f.Add(&input2.x, &input2.y) // F serves as temporary
@@ -73,7 +73,7 @@ func (out *Point_xtw) add_tta(input1 *Point_xtw, input2 *Point_axtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	// D = Z1 D.Mul(&input1.z, &input2.z)  // D = Z1 * Z2
 	E.Add(&input1.x, &input1.y)
 	F.Add(&input2.x, &input2.y) // F serves as temporary
@@ -109,7 +109,7 @@ func (out *Point_efgh) add_sta(input1 *Point_xtw, input2 *Point_axtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	// D = Z1 D.Mul(&input1.z, &input2.z)  // D = Z1 * Z2
 	out.e.Add(&input1.x, &input1.y)
 	out.f.Add(&input2.x, &input2.y) // F serves as temporary
@@ -142,7 +142,7 @@ func (out *Point_xtw) add_taa(input1 *Point_axtw, input2 *Point_axtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	// D = 1 == Z1 * Z2
 	E.Add(&input1.x, &input1.y)
 	F.Add(&input2.x, &input2.y) // F serves as temporary
@@ -174,7 +174,7 @@ func (out *Point_efgh) add_saa(input1 *Point_axtw, input2 *Point_axtw) {
 	A.Mul(&input1.x, &input2.x) // A = X1 * X2
 	B.Mul(&input1.y, &input2.y) // B = Y1 * Y2
 	C.Mul(&input1.t, &input2.t)
-	C.MulEq(&TwistedEdwardsD_fe) // C = d * T1 * T2
+	C.MulEq(&CurveParameterD_fe) // C = d * T1 * T2
 	// D = 1 == Z1 * Z2
 	out.e.Add(&input1.x, &input1.y)
 	out.f.Add(&input2.x, &input2.y) // F serves as temporary

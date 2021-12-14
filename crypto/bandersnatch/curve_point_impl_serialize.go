@@ -52,8 +52,8 @@ func default_SerializeShort(receiver CurvePointRead, output io.Writer) (bytes_wr
 	if receiver.IsAtInfinity() {
 		return 0, ErrCannotSerializePointAtInfinity
 	}
-	if receiver.IsSingular() {
-		handle_errors("trying to serialize NaP in short format", false, receiver)
+	if receiver.IsNaP() {
+		napEncountered("trying to serialize NaP in short format", false, receiver)
 		return 0, ErrCannotSerializeNaP
 	}
 	var receiver_copy Point_axtw = receiver.AffineExtended()
@@ -66,8 +66,8 @@ func default_SerializeLong(receiver CurvePointRead, output io.Writer) (bytes_wri
 	if receiver.IsAtInfinity() {
 		return 0, ErrCannotSerializePointAtInfinity
 	}
-	if receiver.IsSingular() {
-		handle_errors("trying to serialize NaP in short format", false, receiver)
+	if receiver.IsNaP() {
+		napEncountered("trying to serialize NaP in short format", false, receiver)
 		return 0, ErrCannotSerializeNaP
 	}
 	var receiver_copy Point_axtw = receiver.AffineExtended()
@@ -164,7 +164,7 @@ func affineFromXYSignY(xTemp *FieldElement, yTemp *FieldElement, trusted bool) (
 		yTemp.SubEq(xTemp)   // 1-ax^2 - y^2
 
 		xTemp.Square(&ret.t)             // t^2 == x^2y^2
-		xTemp.MulEq(&TwistedEdwardsD_fe) // dt^2
+		xTemp.MulEq(&CurveParameterD_fe) // dt^2
 		yTemp.AddEq(xTemp)               // 1 - ax^2 - y^2 + dt^2
 		if !yTemp.IsZero() {
 			err = ErrNotOnCurve
@@ -288,7 +288,7 @@ func recoverYFromXAffine(x *FieldElement, checkSubgroup bool) (y FieldElement, e
 	var num, denom FieldElement
 
 	num.Square(x)                        // x^2, only compute this once
-	denom.Mul(&num, &TwistedEdwardsD_fe) // dx^2
+	denom.Mul(&num, &CurveParameterD_fe) // dx^2
 	num.multiply_by_five()               // 5x^2 = -ax^2
 	num.AddEq(&FieldElementOne)          // 1 - ax^2
 	denom.Sub(&FieldElementOne, &denom)  // 1 - dx^2
@@ -315,7 +315,7 @@ func recoverYFromXAffine(x *FieldElement, checkSubgroup bool) (y FieldElement, e
 func (p *Point_xtw) isPointOnCurve() bool {
 
 	// Singular points are not on the curve
-	if p.IsSingular() {
+	if p.IsNaP() {
 		return false
 	}
 
@@ -329,7 +329,7 @@ func (p *Point_xtw) isPointOnCurve() bool {
 
 	// We now check the main curve equation, i.e. whether ax^2 + y^2 == z^2 + dt^2
 	u.Mul(&p.t, &p.t)
-	u.MulEq(&TwistedEdwardsD_fe) // u = d*t^2
+	u.MulEq(&CurveParameterD_fe) // u = d*t^2
 	v.Mul(&p.z, &p.z)
 	u.AddEq(&v) // u= dt^2 + z^2
 	v.Mul(&p.y, &p.y)
@@ -352,7 +352,7 @@ func checkLegendreX(x FieldElement) bool {
 // checkLegendreX2(x) == checkLegendreX iff an rational y-coo satisfying the curve equation exists.
 func checkLegendreX2(x FieldElement) bool {
 	x.SquareEq()
-	x.MulEq(&TwistedEdwardsD_fe)
+	x.MulEq(&CurveParameterD_fe)
 	x.Sub(&FieldElementOne, &x) // 1 - dx^2
 	return x.Jacobi() >= 0      // cannot be ==0, since d is a non-square
 }

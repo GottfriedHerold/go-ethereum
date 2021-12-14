@@ -50,20 +50,20 @@ func (p *Point_axtw) IsNeutralElement() bool {
 	// NOTE: This is only correct since we work modulo the affine order-2 point (x=0, y=-c, t=0, z=c).
 	if p.x.IsZero() {
 		if p.y.IsZero() {
-			return handle_errors("When checking whether an axtw point is the neutral element, an NaP was encountered", true, p)
+			return napEncountered("When checking whether an axtw point is the neutral element, an NaP was encountered", true, p)
 		}
 		return true
 	}
 	return false
 }
 
-// IsNeutralElement_exact tests for zero-ness. It does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
+// IsNeutralElement_exact tests for zero-ness like IsNeutralElement. The difference is that it does *NOT* identify P with P+A. We only assume that x,y,t,z satisfy the curve equations.
 func (p *Point_axtw) IsNeutralElement_exact() bool {
 	if !p.x.IsZero() {
 		return false
 	}
 	if p.y.IsZero() {
-		return handle_errors("When checking whether an axtw point is exactly the neutral element, a NaP was encountered", true, p)
+		return napEncountered("When checking whether an axtw point is exactly the neutral element, a NaP was encountered", true, p)
 	}
 	if !p.t.IsZero() {
 		panic("axtw Point with x==0, y!=0, t!=0 encountered. This must never happen")
@@ -74,19 +74,22 @@ func (p *Point_axtw) IsNeutralElement_exact() bool {
 // IsEqual compares two curve points for equality, working modulo the P = P + A identification. The two points do not have the be in the same coordinate format.
 // TODO: Export variants for specific non-interface types to get more type safety?
 func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
-	switch other_real := other.(type) {
+	switch other := other.(type) {
 	case *Point_xtw:
-		return p.is_equal_at(other_real)
+		return p.is_equal_at(other)
 	case *Point_axtw:
-		return p.is_equal_aa(other_real)
+		return p.is_equal_aa(other)
 	default:
-		if p.IsSingular() || other.IsSingular() {
-			return handle_errors("When comparing an axtw point with another point, a NaP was encountered", true, p, other_real)
+		if p.IsNaP() || other.IsNaP() {
+			return napEncountered("When comparing an axtw point with another point, a NaP was encountered", true, p, other)
 		}
+		// We check whether x1/y1 == x2/y2
+
 		var temp1, temp2 FieldElement
-		var temp_fe FieldElement = other_real.Y_projective()
+		var temp_fe FieldElement = other.Y_projective()
+		// Note: p and other cannot alias due to type, so reasing p is safe between calls to Y_projective and X_projective
 		temp1.Mul(&p.x, &temp_fe)
-		temp_fe = other_real.X_projective()
+		temp_fe = other.X_projective()
 		temp2.Mul(&p.y, &temp_fe)
 		return temp1.IsEqual(&temp2)
 	}
@@ -94,32 +97,34 @@ func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 
 // IsEqual_exact compares two curve points for equality WITHOUT working modulo the P = P+A identification. The two points do not have to be in the same coordinate format.
 func (p *Point_axtw) IsEqual_exact(other CurvePointRead) bool {
-	if p.IsSingular() || other.IsSingular() {
-		return handle_errors("When comparing an axtw point exactly with another point, a NaP was encountered", true, p, other)
+	if p.IsNaP() || other.IsNaP() {
+		return napEncountered("When comparing an axtw point exactly with another point, a NaP was encountered", true, p, other)
 	}
-	switch other_real := other.(type) {
+	switch other := other.(type) {
 	case *Point_xtw:
-		return p.is_equal_exact_at(other_real)
+		return p.is_equal_exact_at(other)
 	case *Point_axtw:
-		return p.is_equal_exact_aa(other_real)
+		return p.is_equal_exact_aa(other)
 	default:
-		other_temp := other.ExtendedTwistedEdwards()
-		return p.is_equal_exact_at(&other_temp)
+		other_copy := other.ExtendedTwistedEdwards()
+		return p.is_equal_exact_at(&other_copy)
 	}
 }
 
 // IsAtInfinity tests whether the point is an infinite (neccessarily order-2) point. Since these points cannot be represented in affine coordinates in the first place, this always returns false.
 func (p *Point_axtw) IsAtInfinity() bool {
-	if p.IsSingular() {
-		return handle_errors("When chekcking whether an axtw point is infinite, a NaP was encountered", false, p)
+	if p.IsNaP() {
+		napEncountered("When chekcking whether an axtw point is infinite, a NaP was encountered", false, p)
+		// we also return false in this case (unless the error handler panics).
 	}
 	return false
 }
 
-// IsSingular checks whether the point is singular (x==y==0, indeed most likely x==y==t==0). Singular points must never appear if the library is used correctly. They can appear by
-// a) performing operations on points that are not in the correct subgroup
-// b) zero-initialized points are singular (Go lacks constructors to fix that).
-func (p *Point_axtw) IsSingular() bool {
+// IsNaP checks whether the point is a NaP (Not-a-point). NaPs must never appear if the library is used correctly. They can appear by
+// a) performing operations on points that are not in the correct subgroup or that are NaPs.
+// b) zero-initialized points are NaPs (Go lacks constructors to fix that).
+// For Point_axtw, NaPs have x==y==0, indeed most likely x==y==t==0.
+func (p *Point_axtw) IsNaP() bool {
 	return p.x.IsZero() && p.y.IsZero()
 }
 
@@ -157,18 +162,18 @@ func (p *Point_axtw) SetFrom(input CurvePointRead) {
 // Use p.Add(&x, &y) for p := x + y.
 // TODO: Export variants for specific types
 func (p *Point_axtw) Add(x, y CurvePointRead) {
-	var temp Point_xtw
+	var temp Point_efgh
 	temp.Add(x, y)
-	p.SetFrom(&temp)
+	*p = temp.AffineExtended()
 }
 
 // Sub performs curve point addition according to the group law.
 // Use p.Sub(&x, &y) for p := x - y.
 // TODO: Export variants for specific types
 func (p *Point_axtw) Sub(x, y CurvePointRead) {
-	var temp Point_xtw
+	var temp Point_efgh
 	temp.Sub(x, y)
-	p.SetFrom(&temp)
+	*p = temp.AffineExtended()
 }
 
 func (p *Point_axtw) Double(in CurvePointRead) {
@@ -179,25 +184,37 @@ func (p *Point_axtw) Double(in CurvePointRead) {
 // Neg computes the negative of the point wrt the elliptic curve group law.
 // Use p.Neg(&input) for p := -input.
 func (p *Point_axtw) Neg(input CurvePointRead) {
-	var temp Point_xtw
-	temp.Neg(input)
-	p.SetFrom(&temp)
+	switch input := input.(type) {
+	case *Point_axtw:
+		p.x.Neg(&input.x)
+		p.y = input.y
+		p.t.Neg(&input.t)
+	case *Point_xtw:
+		*p = input.AffineExtended()
+		p.NegEq()
+	case *Point_efgh:
+		*p = input.AffineExtended()
+		p.NegEq()
+	default:
+		*p = input.AffineExtended()
+		p.NegEq()
+	}
 }
 
 // Endo computes the efficient order-2 endomorphism on the given point.
 func (p *Point_axtw) Endo(input CurvePointRead) {
-	var temp Point_xtw
+	var temp Point_efgh
 	temp.Endo(input)
-	p.SetFrom(&temp)
+	*p = temp.AffineExtended()
 }
 
-// Endo_safe computes the efficient order-2 endomorphism on the given input point (of any coordinate format).
+// Endo_fullCurve computes the efficient order-2 endomorphism on the given input point (of any coordinate format).
 // This function works even if the input may be a point at infinity; note that the output is never at infinity anyway.
-// Be aware that, depending on interpretation, the statement that the endomorpism acts by multiplication by the constant sqrt(2) mod p253 is only true on the good subgroup.
-func (p *Point_axtw) Endo_safe(input CurvePointRead) {
-	var temp Point_xtw
-	temp.Endo_safe(input)
-	p.SetFrom(&temp)
+// Be aware that the statement that the endomorpism acts by multiplication by the constant sqrt(2) mod p253 is only true on the p253 subgroup.
+func (p *Point_axtw) Endo_fullCurve(input CurvePointRead) {
+	var temp Point_efgh
+	temp.Endo_fullCurve(input)
+	*p = temp.AffineExtended()
 }
 
 // SetNeutral sets the Point p to the neutral element of the curve.
@@ -215,19 +232,22 @@ func (p *Point_axtw) SubEq(x CurvePointRead) {
 	p.Sub(p, x)
 }
 
+// DoubleEq doubles the received point p, overwriting p.
 func (p *Point_axtw) DoubleEq() {
-	p.Double(p)
+	var temp Point_efgh
+	temp.add_saa(p, p)
+	*p = temp.AffineExtended()
 }
 
 // NeqEq replaces the given point by its negative (wrt the elliptic curve group addition law)
 func (p *Point_axtw) NegEq() {
-	p.y.NegEq()
+	p.x.NegEq()
 	p.t.NegEq()
 }
 
-// EndoEq applies the endomorphism on the given point. p.EndoEq() is shorthand for p.EndoEq(&p)
+// EndoEq applies the endomorphism on the given point. p.EndoEq() is shorthand for p.EndoEq(&p).
 func (p *Point_axtw) EndoEq() {
-	var temp Point_xtw
-	temp.computeEndomorphism_ta(p)
-	p.SetFrom(&temp)
+	var temp Point_efgh
+	temp.computeEndomorphism_sa(p)
+	*p = temp.AffineExtended()
 }

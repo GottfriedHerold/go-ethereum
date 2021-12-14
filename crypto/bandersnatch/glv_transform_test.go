@@ -11,13 +11,13 @@ func TestGLVParameters(t *testing.T) {
 	// u * 1 + v * GLSEigenvalue == 0 mod p253.
 	// We check that the rows of the lBasis - matrix are in L.
 	var v *big.Int = big.NewInt(0)
-	v.Mul(lBasis_12_Int, EndoEigenvalue_Int)
+	v.Mul(lBasis_12_Int, EndomorphismEigenvalue_Int)
 	v.Add(v, lBasis_11_Int)
 	v.Mod(v, GroupOrder_Int)
 	if v.Sign() != 0 {
 		t.Fatal("First basis vector of L does not satisfy definition of L")
 	}
-	v.Mul(lBasis_22_Int, EndoEigenvalue_Int)
+	v.Mul(lBasis_22_Int, EndomorphismEigenvalue_Int)
 	v.Add(v, lBasis_21_Int)
 	v.Mod(v, GroupOrder_Int)
 	if v.Sign() != 0 {
@@ -51,7 +51,7 @@ func TestGLV(t *testing.T) {
 		exponent.Sub(exponent, bigrange1)
 		u, v := GLV_representation(exponent)
 		temp.Sub(u, exponent)
-		temp2.Mul(v, EndoEigenvalue_Int)
+		temp2.Mul(v, EndomorphismEigenvalue_Int)
 		temp.Add(temp, temp2)
 		temp.Mod(temp, GroupOrder_Int)
 		if temp.Sign() != 0 {

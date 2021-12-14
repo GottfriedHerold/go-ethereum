@@ -13,17 +13,17 @@ import (
 
 // Tests properties of some global parameters
 func TestGlobalParameter(t *testing.T) {
-	if big.Jacobi(big.NewInt(TwistedEdwardsA), BaseFieldSize) == 1 {
+	if big.Jacobi(big.NewInt(CurveParameterA), BaseFieldSize) == 1 {
 		t.Fatal("Parameter a of curve is a square")
 	}
-	if big.Jacobi(TwistedEdwardsD_Int, BaseFieldSize) == 1 {
+	if big.Jacobi(CurveParameterD_Int, BaseFieldSize) == 1 {
 		t.Fatal("Parameter d of curve is a square")
 	}
 	var temp FieldElement
-	temp.Square(&SqrtDDivA_fe)
+	temp.Square(&squareRootDbyA_fe)
 	temp.multiply_by_five()
 	temp.Neg(&temp)
-	if !temp.IsEqual(&TwistedEdwardsD_fe) {
+	if !temp.IsEqual(&CurveParameterD_fe) {
 		t.Fatal("SqrtDDivA is not a square root of d/a")
 	}
 }
@@ -90,12 +90,12 @@ func checkfun_recognize_infinity(s TestSample) (bool, string) {
 	return expected == got, ""
 }
 
-// checks whether IsSingular() correctly recognizes NaPs
+// checks whether IsNaP() correctly recognizes NaPs
 func checkfun_recognize_singularities(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	var expected bool = s.Flags[0].CheckFlag(Case_singular)
-	var got = s.Points[0].IsSingular()
-	return expected == got, "Test sample marked as singular, but IsSingular() does not agree"
+	var got = s.Points[0].IsNaP()
+	return expected == got, "Test sample marked as singular, but IsNaP() does not agree"
 }
 
 // checks whether IsEqual correctly recognizes pairs of equal points (modulo P = P+A)
@@ -130,14 +130,14 @@ func checkfun_conversion_to_affine(s TestSample) (ok bool, error_reason string) 
 	var affine_point Point_axtw
 	if singular {
 		affine_point = s.Points[0].AffineExtended()
-		return affine_point.IsSingular(), "conversion to affine of NaP does not result in NaP"
+		return affine_point.IsNaP(), "conversion to affine of NaP does not result in NaP"
 	}
 	if infinite {
 		// return true, "" // FIXME
 		ok = true // return value in case of a recover()'ed panic
 		defer func() { recover() }()
 		affine_point = s.Points[0].AffineExtended()
-		return affine_point.IsSingular(), "conversion to affine of ininite point neither panics nor results in NaP"
+		return affine_point.IsNaP(), "conversion to affine of ininite point neither panics nor results in NaP"
 	}
 	affine_point = s.Points[0].AffineExtended()
 	return affine_point.IsEqual_exact(s.Points[0]), ""
@@ -150,7 +150,7 @@ func checkfun_conversion_to_xtw(s TestSample) (bool, string) {
 	var point_xtw Point_xtw
 	if singular {
 		point_xtw = s.Points[0].ExtendedTwistedEdwards()
-		return point_xtw.IsSingular(), "conversion of NaP to xtw point did not result in NaP"
+		return point_xtw.IsNaP(), "conversion of NaP to xtw point did not result in NaP"
 	}
 	point_xtw = s.Points[0].ExtendedTwistedEdwards()
 	return point_xtw.IsEqual_exact(s.Points[0]), "conversion to xtw did not result in point that was considered equal"
@@ -164,7 +164,7 @@ func checkfun_clone(s TestSample) (bool, string) {
 	var expected = !singular
 	var got bool
 
-	if singular != point_copy.IsSingular() {
+	if singular != point_copy.IsNaP() {
 		return false, "cloning did not result in the same NaP status as the original"
 	}
 
@@ -242,7 +242,7 @@ func make_checkfun_negative(receiverType PointType) (returned_function checkfunc
 		var negative_of_point CurvePoint = MakeCurvePointFromType(receiverType)
 		var sum CurvePoint = MakeCurvePointFromType(receiverType)
 		negative_of_point.Neg(s.Points[0])
-		if singular != negative_of_point.IsSingular() {
+		if singular != negative_of_point.IsNaP() {
 			return false, "Taking negative of NaP did not result in NaP"
 		}
 		sum.Add(s.Points[0], negative_of_point)
@@ -318,7 +318,7 @@ func make_checkfun_alias(receiverType PointType) (returned_function checkfunctio
 		result2.Add(clone3, clone4)
 
 		if singular {
-			return clone1.IsSingular() && result1.IsSingular() && result2.IsSingular(), "Alias test for add did not get NaP when expected"
+			return clone1.IsNaP() && result1.IsNaP() && result2.IsNaP(), "Alias test for add did not get NaP when expected"
 		}
 		if !(clone1.IsEqual_exact(result1) && clone1.IsEqual_exact(result2)) {
 			return false, "Addition gives inconsistent results when arguments alias"
@@ -332,7 +332,7 @@ func make_checkfun_alias(receiverType PointType) (returned_function checkfunctio
 		result1.Sub(clone2, clone2)
 		result2.Sub(clone3, clone4)
 		if singular {
-			return clone1.IsSingular() && result1.IsSingular() && result2.IsSingular(), "Alias test for sub did not get NaP when expected"
+			return clone1.IsNaP() && result1.IsNaP() && result2.IsNaP(), "Alias test for sub did not get NaP when expected"
 		}
 		if !(clone1.IsEqual_exact(result1) && clone1.IsEqual_exact(result2)) {
 			return false, "Subtraction gives inconsistent results when arguments alias"
@@ -368,7 +368,7 @@ func make_checkfun_alias(receiverType PointType) (returned_function checkfunctio
 			return false, "Computing negative did not work when receiver aliases argument"
 		}
 
-		if !s.AnyFlags().CheckFlag(Case_infinite) { // Endo does not work correctly on infinte points, only Endo_safe does
+		if !s.AnyFlags().CheckFlag(Case_infinite) { // Endo does not work correctly on infinte points, only Endo_fullCurve does
 			clone1 = s.Points[0].Clone().(CurvePoint)
 			clone2 = s.Points[0].Clone().(CurvePoint)
 			clone1.Endo(clone1)
@@ -384,11 +384,11 @@ func make_checkfun_alias(receiverType PointType) (returned_function checkfunctio
 
 		clone1 = s.Points[0].Clone().(CurvePoint)
 		clone2 = s.Points[0].Clone().(CurvePoint)
-		clone1.Endo_safe(clone1)
-		result1.Endo_safe(clone2)
+		clone1.Endo_fullCurve(clone1)
+		result1.Endo_fullCurve(clone2)
 
 		if wasInvalidPointEncountered(func() { got = clone1.IsEqual_exact(result1) }) != singular {
-			return false, "Endo_safe(P) ?= Endo_safe(P) did not trigger error handler on NaP, was expecting" + strconv.FormatBool(singular)
+			return false, "Endo_fullCurve(P) ?= Endo_fullCurve(P) did not trigger error handler on NaP, was expecting" + strconv.FormatBool(singular)
 		}
 		if got != expected {
 			return false, "Computing Endomorphism (for full curve) did not work when receiver aliases argument"
@@ -456,7 +456,7 @@ func checkfun_associative_law(s TestSample) (bool, string) {
 	return got == expected, ""
 }
 
-// This function checks whether the endomorphism factors through P=P+A and Endo and Endo_safe agree
+// This function checks whether the endomorphism factors through P=P+A and Endo and Endo_fullCurve agree
 func make_checkfun_endo_sane(receiverType PointType) (returned_function checkfunction) {
 	returned_function = func(s TestSample) (bool, string) {
 		s.AssertNumberOfPoints(1)
@@ -464,22 +464,22 @@ func make_checkfun_endo_sane(receiverType PointType) (returned_function checkfun
 		var infinite bool = s.AnyFlags().CheckFlag(Case_infinite)
 		var result1 = MakeCurvePointFromType(receiverType)
 		var result2 = MakeCurvePointFromType(receiverType)
-		result1.Endo_safe(s.Points[0])
+		result1.Endo_fullCurve(s.Points[0])
 
 		if singular {
-			if !result1.IsSingular() {
-				return false, "Endo_safe(NaP) did not result in NaP"
+			if !result1.IsNaP() {
+				return false, "Endo_fullCurve(NaP) did not result in NaP"
 			}
 			result2.Endo(s.Points[0])
-			if !result2.IsSingular() {
+			if !result2.IsNaP() {
 				return false, "Endo(NaP) did not result in NaP"
 			}
 			// No further checks
 			return true, ""
 		}
 
-		if result1.IsSingular() {
-			return false, "Endo_safe(P) resulted in NaP for non-NaP P"
+		if result1.IsNaP() {
+			return false, "Endo_fullCurve(P) resulted in NaP for non-NaP P"
 		}
 
 		var result_xtw Point_xtw = result1.ExtendedTwistedEdwards()
@@ -498,19 +498,19 @@ func make_checkfun_endo_sane(receiverType PointType) (returned_function checkfun
 		} else {
 			// input was point at infinity. Output should be affine order-2 point
 			if !result1.IsEqual_exact(&orderTwoPoint_xtw) {
-				return false, "Endo_safe(infinite point) != affine order-2 point"
+				return false, "Endo_fullCurve(infinite point) != affine order-2 point"
 			}
 		}
 
 		if s.Points[0].IsNeutralElement() != result1.IsNeutralElement_exact() {
-			return false, "Endo_safe act as expected wrt neutral elements"
+			return false, "Endo_fullCurve act as expected wrt neutral elements"
 		}
 		if !infinite { // On infinite points, AddEq(&orderTwoPoint) might not work
 			var point_copy = s.Points[0].Clone().(CurvePoint)
 			point_copy.AddEq(&orderTwoPoint_xtw)
-			result2.Endo_safe(point_copy)
+			result2.Endo_fullCurve(point_copy)
 			if !result1.IsEqual_exact(result2) {
-				return false, "Endo_safe(P) != Endo_safe(P+A)"
+				return false, "Endo_fullCurve(P) != Endo_fullCurve(P+A)"
 			}
 		}
 		return true, ""
@@ -534,15 +534,15 @@ func make_checkfun_endo_homomorphic(receiverType PointType) (returned_function c
 		sum := MakeCurvePointFromType(receiverType)
 		result1 := MakeCurvePointFromType(receiverType)
 		result2 := MakeCurvePointFromType(receiverType)
-		endo1.Endo_safe(s.Points[0])
-		endo2.Endo_safe(s.Points[1])
+		endo1.Endo_fullCurve(s.Points[0])
+		endo2.Endo_fullCurve(s.Points[1])
 		sum.Add(s.Points[0], s.Points[1])
 		result1.Add(endo1, endo2)
-		result2.Endo_safe(sum)
-		if result1.IsSingular() {
+		result2.Endo_fullCurve(sum)
+		if result1.IsNaP() {
 			return false, "Endo(P) + Endo(Q) resulted in NaP" // cannot trigger exceptional cases of addition, because the range of Endo is the good subgroup (verified by endo_sane).
 		}
-		if result2.IsSingular() {
+		if result2.IsNaP() {
 			return false, "Endo(P+Q) resulted in unexpected NaP"
 		}
 		if !result1.IsEqual_exact(result2) {

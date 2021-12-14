@@ -39,11 +39,11 @@ func (p1 *Point_xtw) is_equal_tt(p2 *Point_xtw) bool {
 	if error_code != 0 {
 		switch error_code {
 		case 1:
-			return handle_errors("When comparing two xtw points, the first one was invalid", true, p1, p2)
+			return napEncountered("When comparing two xtw points, the first one was invalid", true, p1, p2)
 		case 2:
-			return handle_errors("When comparing two xtw points, the second one was invalid", true, p1, p2)
+			return napEncountered("When comparing two xtw points, the second one was invalid", true, p1, p2)
 		case 3:
-			return handle_errors("When comparing two xtw points, both were invalid", true, p1, p2)
+			return napEncountered("When comparing two xtw points, both were invalid", true, p1, p2)
 		}
 	}
 	return result
@@ -55,11 +55,11 @@ func (p1 *Point_xtw) is_equal_ta(p2 *Point_axtw) bool {
 	if error_code != 0 {
 		switch error_code {
 		case 1:
-			return handle_errors("When comparing an axtw and xtw point, the axtw one was invalid", true, p1, p2)
+			return napEncountered("When comparing an axtw and xtw point, the axtw one was invalid", true, p1, p2)
 		case 2:
-			return handle_errors("When comparing an axtw and xtw point, the xtw one was invalid", true, p1, p2)
+			return napEncountered("When comparing an axtw and xtw point, the xtw one was invalid", true, p1, p2)
 		case 3:
-			return handle_errors("When comparing an axtw and xtw point, both were invalid", true, p1, p2)
+			return napEncountered("When comparing an axtw and xtw point, both were invalid", true, p1, p2)
 		}
 	}
 	return result
@@ -77,11 +77,11 @@ func (p1 *Point_axtw) is_equal_aa(p2 *Point_axtw) bool {
 	if error_code != 0 {
 		switch error_code {
 		case 1:
-			return handle_errors("When comparing two axtw points, the first one was invalid", true, p1, p2)
+			return napEncountered("When comparing two axtw points, the first one was invalid", true, p1, p2)
 		case 2:
-			return handle_errors("When comparing two axtw points, the second one was invalid", true, p1, p2)
+			return napEncountered("When comparing two axtw points, the second one was invalid", true, p1, p2)
 		case 3:
-			return handle_errors("When comparing two axtw points, both were invalid", true, p1, p2)
+			return napEncountered("When comparing two axtw points, both were invalid", true, p1, p2)
 		}
 	}
 	return result
@@ -90,11 +90,11 @@ func (p1 *Point_axtw) is_equal_aa(p2 *Point_axtw) bool {
 // is_equal_exact_tt checks whether p1 == p2. This works for all rational points (including points at infinity), not only those in the subgroup. It does *not* identify P with P+A
 // We assume both points not to be singular.
 func (p1 *Point_xtw) is_equal_exact_tt(p2 *Point_xtw) bool {
-	if p1.IsSingular() {
-		return handle_errors("When comparing two xtw points exactly, the first one was invalid", true, p1, p2)
+	if p1.IsNaP() {
+		return napEncountered("When comparing two xtw points exactly, the first one was invalid", true, p1, p2)
 	}
-	if p2.IsSingular() {
-		return handle_errors("When comparing two xtw points exactly, the second one was invalid", true, p1, p2)
+	if p2.IsNaP() {
+		return napEncountered("When comparing two xtw points exactly, the second one was invalid", true, p1, p2)
 	}
 	var temp1, temp2 FieldElement
 	if p1.z.IsZero() {
@@ -122,11 +122,11 @@ func (p1 *Point_xtw) is_equal_exact_tt(p2 *Point_xtw) bool {
 }
 
 func (p1 *Point_xtw) is_equal_exact_ta(p2 *Point_axtw) bool {
-	if p1.IsSingular() {
-		return handle_errors("When comparing an axtw and xtw point exactly, the xtw one was invalid", true, p1, p2)
+	if p1.IsNaP() {
+		return napEncountered("When comparing an axtw and xtw point exactly, the xtw one was invalid", true, p1, p2)
 	}
-	if p2.IsSingular() {
-		return handle_errors("When comparing and axtw and xtw point exactly, the axtw one was invalid", true, p1, p2)
+	if p2.IsNaP() {
+		return napEncountered("When comparing and axtw and xtw point exactly, the axtw one was invalid", true, p1, p2)
 	}
 	if p1.z.IsZero() {
 		return false
@@ -147,11 +147,11 @@ func (p1 *Point_axtw) is_equal_exact_at(p2 *Point_xtw) bool {
 }
 
 func (p1 *Point_axtw) is_equal_exact_aa(p2 *Point_axtw) bool {
-	if p1.IsSingular() {
-		return handle_errors("When comparing two axtw points, the first one was invalid", true, p1, p2)
+	if p1.IsNaP() {
+		return napEncountered("When comparing two axtw points, the first one was invalid", true, p1, p2)
 	}
-	if p2.IsSingular() {
-		return handle_errors("When comparing two axtw points, the second one was invalid", true, p1, p2)
+	if p2.IsNaP() {
+		return napEncountered("When comparing two axtw points, the second one was invalid", true, p1, p2)
 	}
 	return p1.x.IsEqual(&p2.x) && p1.y.IsEqual(&p2.y)
 }
