@@ -21,7 +21,7 @@ x=y=0 (and always t=0, not sure?): Aff1 - singularity
 
 Point_efgh:
 f=h=0: "true" singularity type S1
-// e=g=0: "true" singularity type S2 (actually does not appear)
+e=g=0: "true" singularity type S2 (rarely appears)
 e=h=0: Aff2-singularity
 e=f=g=h=0: full singularity S
 
@@ -30,7 +30,6 @@ These are mild in the sense that they still (trivially) satisfy the curve equati
 "true" singularities or division by zero.
 The A1, A2 singularities are artifiacts of uninitialized _affine_ coos and working with them.
 (Note that X0 is covered by A1, but there's a difference in "meaning")
-It seems that S2 never appear, which makes things easier.
 
 ---
 uninitialized Point_xtw -> X0

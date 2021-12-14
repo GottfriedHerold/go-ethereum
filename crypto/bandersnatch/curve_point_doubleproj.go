@@ -30,61 +30,66 @@ var (
 	exceptionalPoint_2_efgh = Point_efgh{e: FieldElementOne, f: SqrtDDivA_fe, g: FieldElementZero, h: FieldElementMinusOne}
 )
 
-func (P *Point_efgh) is_normalized() bool {
-	return P.f.IsOne() && P.g.IsOne()
+func (p *Point_efgh) is_normalized() bool {
+	return p.f.IsOne() && p.g.IsOne()
 }
 
-func (P *Point_efgh) normalize_affine() {
-	if P.is_normalized() {
+func (p *Point_efgh) normalize_affine() {
+	if p.is_normalized() {
 		return
 	}
 	var temp FieldElement
-	temp.Mul(&P.f, &P.g)
+	temp.Mul(&p.f, &p.g)
 	if temp.IsZero() {
-		panic("Trying to normalize singular or infinite point")
+		if p.IsSingular() {
+			handle_errors("Trying to normalize singular point", false, p)
+			*p = Point_efgh{}
+			return
+		}
+		panic("Trying to normalize point at infinity")
 	}
 	temp.Inv(&temp)
-	P.e.MulEq(&P.f)
-	P.h.MulEq(&P.g)
-	P.e.MulEq(&temp)
-	P.h.MulEq(&temp)
-	P.f.SetOne()
-	P.g.SetOne()
+	p.e.MulEq(&p.f)
+	p.h.MulEq(&p.g)
+	p.e.MulEq(&temp)
+	p.h.MulEq(&temp)
+	p.f.SetOne()
+	p.g.SetOne()
 }
 
-func (P *Point_efgh) X_projective() (X FieldElement) {
-	X.Mul(&P.e, &P.f)
+func (p *Point_efgh) X_projective() (X FieldElement) {
+	X.Mul(&p.e, &p.f)
 	return
 }
 
-func (P *Point_efgh) Y_projective() (Y FieldElement) {
-	Y.Mul(&P.g, &P.h)
+func (p *Point_efgh) Y_projective() (Y FieldElement) {
+	Y.Mul(&p.g, &p.h)
 	return
 }
 
-func (P *Point_efgh) T_projective() (T FieldElement) {
-	T.Mul(&P.e, &P.h)
+func (p *Point_efgh) T_projective() (T FieldElement) {
+	T.Mul(&p.e, &p.h)
 	return
 }
 
-func (P *Point_efgh) Z_projective() (Z FieldElement) {
-	Z.Mul(&P.f, &P.g)
+func (p *Point_efgh) Z_projective() (Z FieldElement) {
+	Z.Mul(&p.f, &p.g)
 	return
 }
 
-func (P *Point_efgh) X_affine() FieldElement {
-	P.normalize_affine()
-	return P.e
+func (p *Point_efgh) X_affine() FieldElement {
+	p.normalize_affine()
+	return p.e
 }
 
-func (P *Point_efgh) Y_affine() FieldElement {
-	P.normalize_affine()
-	return P.h
+func (p *Point_efgh) Y_affine() FieldElement {
+	p.normalize_affine()
+	return p.h
 }
 
-func (P *Point_efgh) T_affine() (T FieldElement) {
-	P.normalize_affine()
-	T.Mul(&P.e, &P.h)
+func (p *Point_efgh) T_affine() (T FieldElement) {
+	p.normalize_affine()
+	T.Mul(&p.e, &p.h)
 	return
 }
 
@@ -96,8 +101,8 @@ func (p *Point_efgh) IsNeutralElement() bool {
 	return p.e.IsZero()
 }
 
-func (P *Point_efgh) IsNeutralElement_exact() bool {
-	return P.IsNeutralElement() && P.f.IsEqual(&P.h)
+func (p *Point_efgh) IsNeutralElement_exact() bool {
+	return p.IsNeutralElement() && p.f.IsEqual(&p.h)
 }
 
 func (p *Point_efgh) IsEqual(other CurvePointRead) bool {
@@ -117,8 +122,8 @@ func (p *Point_efgh) IsEqual(other CurvePointRead) bool {
 	}
 }
 
-func (P *Point_efgh) IsEqual_exact(other CurvePointRead) bool {
-	temp := P.ExtendedTwistedEdwards()
+func (p *Point_efgh) IsEqual_exact(other CurvePointRead) bool {
+	temp := p.ExtendedTwistedEdwards()
 	return temp.IsEqual_exact(other)
 }
 
@@ -131,31 +136,25 @@ func (p *Point_efgh) IsAtInfinity() bool {
 }
 
 // NaP points have either f==h==0 ("true" NaP-type1) or e==g==0 ("true" NaP-type2) or e==h==0 (result of working on affine NaP).
-// However, no valid points ever have h==0 or f==0 and NaP-type1 actually never appears, so we only check for that.
+// Note that no valid points ever have h==0 or f==0.
 
 func (p *Point_efgh) IsSingular() bool {
 	if p.h.IsZero() {
-		if !(p.f.IsZero() || p.h.IsZero()) {
+		if !(p.f.IsZero() || p.e.IsZero()) {
 			panic("efgh-Point is NaP with h==0, but ef != 0")
 		}
 		return true
+	}
+
+	if p.g.IsZero() && p.e.IsZero() {
+		return true
+		panic("Type-2 efgh NaP encountered") // This is for testing only. -- remove / reconsider later.
 	}
 
 	if p.f.IsZero() {
 		panic("efgh-Point with f==0 and h!=0 encountered")
 	}
 
-	if p.e.IsZero() && p.g.IsZero() {
-		panic("Type-2 efgh NaP encountered") // This is for testing only. -- remove / reconsider later.
-	}
-
-	/* if p.h.IsZero() || p.f.IsZero() {
-		if !(p.e.IsZero() && p.h.IsZero()) || (p.f.IsZero() && p.g.IsZero()) {
-			panic("Non-NaP Point in efgh-coos with with f==0 or h==0 encountered")
-		}
-		return true
-	}
-	*/
 	return false
 }
 
@@ -280,7 +279,11 @@ func (p *Point_efgh) Endo(input CurvePointRead) {
 func (p *Point_efgh) Endo_safe(input CurvePointRead) {
 	switch input := input.(type) {
 	case *Point_efgh:
-		p.computeEndomorphism_ss(input)
+		if input.IsAtInfinity() {
+			*p = orderTwoPoint_efgh
+		} else {
+			p.computeEndomorphism_ss(input)
+		}
 	case *Point_axtw:
 		p.computeEndomorphism_sa(input)
 	case *Point_xtw:

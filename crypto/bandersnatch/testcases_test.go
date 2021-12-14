@@ -173,6 +173,11 @@ func (in *TestSample) CopyXTWToType(new_type []PointType) (ret TestSample) {
 			var point_copy Point_axtw = in.Points[i].AffineExtended()
 			ret.Points = append(ret.Points, &point_copy)
 			ret.Flags = append(ret.Flags, in.Flags[i])
+		case pointTypeEFGH:
+			var point_copy Point_efgh
+			point_copy.SetFrom(in.Points[i])
+			ret.Points = append(ret.Points, &point_copy)
+			ret.Flags = append(ret.Flags, in.Flags[i])
 		default:
 			panic("Not supported yet")
 		}
@@ -340,18 +345,25 @@ func make_random_singular_sample_axtw(rnd *rand.Rand) TestSample {
 func make_random_singular_sample_efgh(rnd *rand.Rand) TestSample {
 	var p Point_efgh
 	var s string
-	if rnd.Intn(2) == 0 {
+	switch rnd.Intn(3) {
+	case 0:
 		p.e.SetZero()
-		p.h.SetZero()
 		p.f.setRandomUnsafe(rnd)
 		p.g.setRandomUnsafe(rnd)
+		p.h.SetZero()
 		s = "Random singular efgh (e=h=0)"
-	} else {
+	case 1:
 		p.e.setRandomUnsafe(rnd)
-		p.h.setRandomUnsafe(rnd)
 		p.f.SetZero()
+		p.g.setRandomUnsafe(rnd)
+		p.h.SetZero()
+		s = "Random singular efgh (f=h=0)"
+	case 2:
+		p.e.SetZero()
+		p.f.setRandomUnsafe(rnd)
 		p.g.SetZero()
-		s = "Random singular efgh (f=g=0)"
+		p.h.setRandomUnsafe(rnd)
+		s = "Random singular efgh (e=g=0)"
 	}
 	return MakeSample1(&p, Case_singular|Case_random, s)
 }

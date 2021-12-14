@@ -141,8 +141,8 @@ func (output *Point_efgh) computeEndomorphism_sa(input *Point_axtw) {
 /*
 	Computing endomorphism on input points with efgh coordinates can be done faster than converting the input to axtw first, because we can skip computing input.t (which we do not need)
 	However, we can actually do better by observing that the output's E,F,H are multiples of input.G^2 and output.G is a multiple of input.G.
-	We clear powers of G and work in EFGH coos directly, saving a further multiplication.
-	Furthermore, we can also rewrite z^2 - y^2 = ax^2 -dt^2 and rewrite formulas a bit. This results in a formula without exceptional cases.
+	We clear powers of G and work in EFGH coos directly, saving a further multiplication and reducing the number of exceptional cases.
+	Furthermore, we can also rewrite z^2 - y^2 = ax^2 -dt^2 and rewrite formulas a bit. This has the effect that the sole remaining exceptional case is now at infinity (rather than at N and A).
 */
 
 func (output *Point_efgh) computeEndomorphism_ss(input *Point_efgh) {

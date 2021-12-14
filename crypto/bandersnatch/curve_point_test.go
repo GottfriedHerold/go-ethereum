@@ -36,6 +36,7 @@ func TestInterfaces(t *testing.T) {
 	var _ CurvePointRead = &Point_axtw{}
 	var _ CurvePointWrite = &Point_axtw{}
 	var _ CurvePointRead = &Point_efgh{}
+	var _ CurvePointWrite = &Point_efgh{}
 }
 
 /*
@@ -132,8 +133,8 @@ func checkfun_conversion_to_affine(s TestSample) (ok bool, error_reason string) 
 		return affine_point.IsSingular(), "conversion to affine of NaP does not result in NaP"
 	}
 	if infinite {
-		return true, "" // FIXME
-		ok = true       // return value in case of a recover()'ed panic
+		// return true, "" // FIXME
+		ok = true // return value in case of a recover()'ed panic
 		defer func() { recover() }()
 		affine_point = s.Points[0].AffineExtended()
 		return affine_point.IsSingular(), "conversion to affine of ininite point neither panics nor results in NaP"
@@ -387,7 +388,7 @@ func make_checkfun_alias(receiverType PointType) (returned_function checkfunctio
 		result1.Endo_safe(clone2)
 
 		if wasInvalidPointEncountered(func() { got = clone1.IsEqual_exact(result1) }) != singular {
-			return false, "Endo_safe(P) ?= Endo_safe(P) did not trigger error handler on NaP"
+			return false, "Endo_safe(P) ?= Endo_safe(P) did not trigger error handler on NaP, was expecting" + strconv.FormatBool(singular)
 		}
 		if got != expected {
 			return false, "Computing Endomorphism (for full curve) did not work when receiver aliases argument"
@@ -553,7 +554,7 @@ func make_checkfun_endo_homomorphic(receiverType PointType) (returned_function c
 }
 
 func test_general(t *testing.T, pointType PointType, excluded_flags PointFlags) {
-	allTypes := []PointType{pointTypeXTW, pointTypeAXTW}
+	allTypes := []PointType{pointTypeXTW, pointTypeAXTW, pointTypeEFGH}
 	var type1, type2 PointType
 	point_string := PointTypeToString(pointType)
 	make_samples1_and_run_tests(t, checkfun_recognize_neutral, "Did not recognize neutral element for "+point_string, pointType, 10, excluded_flags)
@@ -623,4 +624,8 @@ func TestGeneralTestsForXTW(t *testing.T) {
 
 func TestGeneralTestForAXTW(t *testing.T) {
 	test_general(t, pointTypeAXTW, Case_infinite)
+}
+
+func TestGeneralTestForEFGH(t *testing.T) {
+	test_general(t, pointTypeEFGH, 0)
 }
