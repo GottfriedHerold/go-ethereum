@@ -7,9 +7,23 @@ package bandersnatch
 	s denotes double-projective
 */
 
-func (out *Point_xtw) neg_tt(input1 *Point_xtw) {
-	out.x.Neg(&input1.x)
-	out.y = input1.y
-	out.t.Neg(&input1.t)
-	out.z = input1.z
+func (out *Point_xtw) neg_tt(input *Point_xtw) {
+	out.x.Neg(&input.x)
+	out.y = input.y
+	out.t.Neg(&input.t)
+	out.z = input.z
+}
+
+func (out *Point_axtw) neg_aa(input *Point_axtw) {
+	out.x.Neg(&input.x)
+	out.y = input.y
+	out.t.Neg(&input.t)
+}
+
+func (out *Point_efgh) neg_ss(input *Point_efgh) {
+	// Only need to negate e (or equivalently, g)
+	out.e.Neg(&input.e)
+	out.f = input.f
+	out.g = input.g
+	out.h = input.h
 }

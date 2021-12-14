@@ -1,6 +1,7 @@
 package bandersnatch
 
 import (
+	"io"
 	"math/big"
 )
 
@@ -128,6 +129,26 @@ func (p *Point_xtw) T_projective() FieldElement {
 	return p.t
 }
 
+func (p *Point_xtw) SerializeLong(output io.Writer) (bytes_written int, err error) {
+	return default_SerializeLong(p, output)
+}
+
+func (p *Point_xtw) SerializeShort(output io.Writer) (bytes_written int, err error) {
+	return default_SerializeShort(p, output)
+}
+
+func (p *Point_xtw) DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error) {
+	return default_DeserializeShort(p, input, trusted)
+}
+
+func (p *Point_xtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error) {
+	return default_DeserializeLong(p, input, trusted)
+}
+
+func (p *Point_xtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error) {
+	return default_DeserializeAuto(p, input, trusted)
+}
+
 // Q: Should IsAffine and MakeAffine be exported in the first place?
 // Note that the names of the function are misleading. NormalizeAffine might be better.
 // (In particular, IsAffine might be mistaken for querying whether a point is at infinity or not)
@@ -142,11 +163,15 @@ func (p *Point_xtw) MakeAffine() {
 
 // String prints the point in X:Y:T:Z - format
 func (p *Point_xtw) String() string {
-	// Not the most efficient way, but good enough.
+	// Not the most efficient way to concatenate strings, but good enough.
 	return p.x.String() + ":" + p.y.String() + ":" + p.t.String() + ":" + p.z.String()
 }
 
+// TODO: Remove?
 func (p *Point_xtw) IsAffine() bool {
+	if p.IsSingular() {
+		return handle_errors("Checking affine-ness of NaP", false, p)
+	}
 	return p.z.IsOne()
 }
 
@@ -389,16 +414,36 @@ func (p *Point_xtw) SubEq(x CurvePointRead) {
 }
 
 func (p *Point_xtw) SetFrom(input CurvePointRead) {
-	switch from_real := input.(type) {
+	switch input := input.(type) {
 	case *Point_xtw:
-		*p = *from_real
+		*p = *input
+	case *Point_axtw:
+		p.x = input.x
+		p.y = input.y
+		p.t = input.t
+		p.z.SetOne()
 	default:
-		p.x = from_real.X_projective()
-		p.y = from_real.Y_projective()
-		p.z = from_real.Z_projective()
+		p.x = input.X_projective()
+		p.y = input.Y_projective()
+		p.z = input.Z_projective()
 		p.t.Mul(&p.x, &p.y)
 		p.x.MulEq(&p.z)
 		p.y.MulEq(&p.z)
 		p.z.SquareEq()
 	}
+}
+
+func (p *Point_xtw) Double(input CurvePointRead) {
+	switch input := input.(type) {
+	case *Point_xtw:
+		p.double_tt(input)
+	case *Point_axtw:
+		p.double_ta(input)
+	default:
+		default_Double(p, input)
+	}
+}
+
+func (p *Point_xtw) DoubleEq() {
+	p.double_tt(p)
 }

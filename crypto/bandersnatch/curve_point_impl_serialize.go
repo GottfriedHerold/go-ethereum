@@ -9,11 +9,71 @@ import (
 // Note: If X/Z is not on the curve, we might get either a "not on curve" or "not in subgroup" error.
 var ErrXNotInSubgroup = errors.New("received affine X coordinate does not correspond to any point in the p253 subgroup of the Bandersnatch curve")
 var ErrXNotOnCurve = errors.New("received affine X coordinate does not correspond to any (finite, rational) point of the Bandersnatch curve")
+var ErrCannotSerializePointAtInfinity = errors.New("serialization: cannot serialize point at infinity")
+var ErrCannotSerializeNaP = errors.New("serialization: cannot serialize NaP")
 
 var ErrNotInSubgroup = errors.New("deserialization: received affine X and Y coordinates do not correspond to a point in the p253 subgroup of the Bandersnatch curve")
 var ErrNotOnCurve = errors.New("deserialization: received affine X and Y corrdinates do not correspond to a point on the Bandersnatch curve")
 var ErrWrongSignY = errors.New("deserialization: encountered affine Y coordinate with unexpected Sign bit")
 var ErrUnrecognizedFormat = errors.New("deserialization: could not automatically detect serialization format")
+
+// Default implementation of DeserializeShort in terms of Point_axtw::DeserializeShort
+func default_DeserializeShort(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+	var result Point_axtw
+	bytes_read, err = result.DeserializeShort(input, trusted)
+	if err == nil || err == ErrNonNormalizedDeserialization {
+		receiver.SetFrom(&result)
+	}
+	return
+}
+
+// Default implementation of DeserializeLong in terms of Point_axtw::DeserializeLong
+func default_DeserializeLong(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+	var result Point_axtw
+	bytes_read, err = result.DeserializeLong(input, trusted)
+	if err == nil || err == ErrNonNormalizedDeserialization {
+		receiver.SetFrom(&result)
+	}
+	return
+}
+
+// Default implementation of DeserializeAuto in terms of Point_axtw::DeserializeAuto
+func default_DeserializeAuto(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+	var result Point_axtw
+	bytes_read, err = result.DeserializeAuto(input, trusted)
+	if err == nil || err == ErrNonNormalizedDeserialization {
+		receiver.SetFrom(&result)
+	}
+	return
+}
+
+// Default implementation of SerializeShort in terms of Point_axtw::SerializeShort
+func default_SerializeShort(receiver CurvePointRead, output io.Writer) (bytes_written int, err error) {
+	if receiver.IsAtInfinity() {
+		return 0, ErrCannotSerializePointAtInfinity
+	}
+	if receiver.IsSingular() {
+		handle_errors("trying to serialize NaP in short format", false, receiver)
+		return 0, ErrCannotSerializeNaP
+	}
+	var receiver_copy Point_axtw = receiver.AffineExtended()
+	bytes_written, err = receiver_copy.SerializeShort(output)
+	return
+}
+
+// Default implementation of SerializeLong in terms of Point_axtw::SerializeLong
+func default_SerializeLong(receiver CurvePointRead, output io.Writer) (bytes_written int, err error) {
+	if receiver.IsAtInfinity() {
+		return 0, ErrCannotSerializePointAtInfinity
+	}
+	if receiver.IsSingular() {
+		handle_errors("trying to serialize NaP in short format", false, receiver)
+		return 0, ErrCannotSerializeNaP
+	}
+	var receiver_copy Point_axtw = receiver.AffineExtended()
+	bytes_written, err = receiver_copy.SerializeShort(output)
+	return
+}
 
 func (p *Point_axtw) specialSerialzeXCoo_a() (ret FieldElement) {
 	ret = p.x

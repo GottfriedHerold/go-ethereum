@@ -12,3 +12,15 @@ func (out *Point_xtw) double_tt(input1 *Point_xtw) {
 	// Note we need to ensure that this formula gives the same result as add_xxx (modulo ax^2 + y^2 = z^2 + dt^2 and a global sign), even for z==0
 	out.add_ttt(input1, input1)
 }
+
+func (out *Point_xtw) double_ta(input *Point_axtw) {
+	out.add_taa(input, input)
+}
+
+func default_Double(receiver CurvePointWrite, input CurvePointRead) {
+	receiver.Add(input, input)
+}
+
+func default_DoubleEq(receiver CurvePoint) {
+	receiver.Double(receiver)
+}

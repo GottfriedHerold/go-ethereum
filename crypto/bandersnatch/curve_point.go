@@ -2,6 +2,7 @@ package bandersnatch
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -65,36 +66,56 @@ var (
 // A CurvePoint represents a rational point on the bandersnatch curve in the correct subgroup.
 
 type CurvePointRead interface {
+	X_projective() FieldElement
+	Y_projective() FieldElement
+	// T_Projective() FieldElement
+	Z_projective() FieldElement
+
+	X_affine() FieldElement // TODO: Consider removal
+	Y_affine() FieldElement // TODO: Consider removal
+	// T_affine() FieldElement
+	// Z_affine == 1
+
 	IsNeutralElement() bool
 	IsNeutralElement_exact() bool
-	X_affine() FieldElement // TODO: Consider removal
-	X_projective() FieldElement
-	Y_affine() FieldElement // TODO: Consider removal
-	Y_projective() FieldElement
-	Z_projective() FieldElement
 	// IsAffine() bool // TODO: Consier removal / renaming
 	// MakeAffine()    // TODO: Consider removal / renaming
-	IsAtInfinity() bool
-	IsSingular() bool
 	IsEqual(CurvePointRead) bool
 	IsEqual_exact(CurvePointRead) bool
+	IsAtInfinity() bool
+	IsSingular() bool
+
 	AffineExtended() Point_axtw
 	ExtendedTwistedEdwards() Point_xtw
 	Clone() CurvePointRead
-	fmt.Stringer
+
+	SerializeShort(output io.Writer) (bytes_written int, err error)
+	SerializeLong(output io.Writer) (bytes_written int, err error)
+
+	fmt.Stringer // i.e. Stringer() string
 }
 
 type CurvePointWrite interface {
-	SetNeutral()
-	SetFrom(CurvePointRead)
 	Add(CurvePointRead, CurvePointRead)
-	AddEq(CurvePointRead)
 	Sub(CurvePointRead, CurvePointRead)
-	SubEq(CurvePointRead)
+	Double(CurvePointRead)
 	Neg(CurvePointRead)
 	Endo(CurvePointRead)
 	Endo_safe(CurvePointRead)
+
+	SetNeutral()
+
+	AddEq(CurvePointRead)
+	SubEq(CurvePointRead)
+	DoubleEq()
+	NegEq()
 	EndoEq()
+
+	SetFrom(CurvePointRead)
+
+	DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error)
+	DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error)
+	DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error)
 	// ClearCofactor()
 }
 
@@ -106,21 +127,26 @@ type CurvePoint interface {
 // TODO: Some of these are unused. Make consistent with Bandersnatch paper.
 
 const (
-	endo_a1        = 0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4
-	endo_a1_string = "0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4"
-	endo_a2        = 0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4
-	endo_a2_string = "0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4"
-	endo_b         = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4 // == sqrt(2) - 1 == sqrt(a/d)
-	endo_b_string  = "0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4"
-	endo_c         = 0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d
-	endo_c_string  = "0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d"
+	endo_a1              = 0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4
+	endo_a1_string       = "0x23c58c92306dbb95960f739827ac195334fcd8fa17df036c692f7ddaa306c7d4"
+	endo_a2              = 0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4
+	endo_a2_string       = "0x23c58c92306dbb96b0b30d3513b222f50d02d8ff03e5036c69317ddaa306c7d4"
+	endo_b               = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4 // == sqrt(2) - 1 == sqrt(a/d)
+	endo_b_string        = "0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b4"
+	endo_binverse        = 0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b6 // =1/endo_b == endo_b + 2 == sqrt(d/a)
+	endo_binverse_string = "0x52c9f28b828426a561f00d3a63511a882ea712770d9af4d6ee0f014d172510b6"
+	endo_bcd_string      = "36255886417209629651405037489028103282266637240540121152239675547668312569901" // == endo_b * endo_c * d
+	endo_c               = 0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d
+	endo_c_string        = "0x6cc624cf865457c3a97c6efd6c17d1078456abcfff36f4e9515c806cdf650b3d"
 	// endo_c1 == - endo_b
 	//c1 = 0x2123b4c7a71956a2d149cacda650bd7d2516918bf263672811f0feb1e8daef4d
 )
 
 var (
-	endo_a1_fe FieldElement = initFieldElementFromString(endo_a1_string)
-	endo_a2_fe FieldElement = initFieldElementFromString(endo_a2_string)
-	endo_b_fe  FieldElement = initFieldElementFromString(endo_b_string)
-	endo_c_fe  FieldElement = initFieldElementFromString(endo_c_string)
+	endo_a1_fe       FieldElement = initFieldElementFromString(endo_a1_string)
+	endo_a2_fe       FieldElement = initFieldElementFromString(endo_a2_string)
+	endo_b_fe        FieldElement = initFieldElementFromString(endo_b_string)
+	endo_c_fe        FieldElement = initFieldElementFromString(endo_c_string)
+	endo_binverse_fe FieldElement = initFieldElementFromString(endo_binverse_string) // Note == SqrtDDivA_fe
+	endo_bcd_fe      FieldElement = initFieldElementFromString(endo_bcd_string)
 )

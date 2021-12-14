@@ -12,69 +12,179 @@ package bandersnatch
 func (output *Point_xtw) computeEndomorphism_tt(input *Point_xtw) {
 	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
 	if input.x.IsZero() {
-		// Since we assume to be on the p253 subgroup/identify P = P+A, we know that the input is actually the neutral element, so the output is the neutral element.
-		// Note that for the other point with x==0 (i.e. the affine order-2 point A), outputting the neutral element is actually correct even without the identification.
-		// To avoid problems, we verify that the input is not singular.
+		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
+
+		// To avoid problems, we verify that the input is valid, as otherwise, we would "heal" an invalid point -> neutral element, which could hide errors.
 		if input.IsSingular() {
-			// TODO: Panic / Log? We set the output to the input to maintain the propery that Operation(singularity) == singularity, i.e. singularity has NaN-like behaviour.
+			handle_errors("Computing endomorphism of NaP of type xtw", false, input)
+			// output NaP on purpose if the check above did not panic. This means Endo(NaP) = NaP
 			*output = Point_xtw{}
 			return
 		}
 		*output = NeutralElement_xtw
 		return
 	}
-	var bzz, yy, A, B, C, D FieldElement
+	var bzz, yy, E, F, G, H FieldElement
 	bzz.Square(&input.z)
 	yy.Square(&input.y)
-	A.Sub(&bzz, &yy)
-	A.MulEq(&endo_c_fe) // A = c*(z^2 - y^2)
+	E.Sub(&bzz, &yy)
+	E.MulEq(&endo_c_fe) // E = c*(z^2 - y^2)
 
 	bzz.MulEq(&endo_b_fe)
-	B.Sub(&yy, &bzz) // B = y^2 - bz^2
+	F.Sub(&yy, &bzz) // F = y^2 - bz^2
 
-	C.Add(&yy, &bzz)
-	C.MulEq(&endo_b_fe) // C = b(y^2 + bz^2)
+	H.Add(&yy, &bzz)
+	H.MulEq(&endo_b_fe) // H = b(y^2 + bz^2)
 
-	D.Mul(&input.t, &input.z) // D = t*z == x*y
+	G.Mul(&input.t, &input.z) // G = t*z == x*y
 
-	output.x.Mul(&A, &B)
-	output.y.Mul(&C, &D)
-	output.t.Mul(&A, &C)
-	output.z.Mul(&B, &D)
+	output.x.Mul(&E, &F)
+	output.y.Mul(&H, &G)
+	output.t.Mul(&E, &H)
+	output.z.Mul(&F, &G)
+}
+
+// computeEndomorphism_st computes the GLV Endomorphism (degree-2 isogeny with kernel {Neutral, Affine oder-2}) on a given input point. It is valid unless input is at infinity.
+// Note that our identification of P with P+A is taken care of automatically.
+func (output *Point_efgh) computeEndomorphism_st(input *Point_xtw) {
+	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
+	if input.x.IsZero() {
+		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
+
+		// To avoid problems, we verify that the input is valid, as otherwise, we would "heal" an invalid point -> neutral element, which could hide errors.
+		if input.IsSingular() {
+			handle_errors("Computing endomorphism of NaP of type xtw", false, input)
+			// output NaP on purpose if the check above did not panic. This means Endo(NaP) = NaP
+			*output = Point_efgh{}
+			return
+		}
+		*output = NeutralElement_efgh
+		return
+	}
+	var bzz, yy FieldElement
+	bzz.Square(&input.z)
+	yy.Square(&input.y)
+	output.e.Sub(&bzz, &yy)
+	output.e.MulEq(&endo_c_fe) // E = c*(z^2 - y^2)
+
+	bzz.MulEq(&endo_b_fe)
+	output.f.Sub(&yy, &bzz) // F = y^2 - bz^2
+
+	output.h.Add(&yy, &bzz)
+	output.h.MulEq(&endo_b_fe) // H = b(y^2 + bz^2)
+
+	output.g.Mul(&input.t, &input.z) // G = t*z == x*y
 }
 
 // same as above, but with z == 1 for the input
 func (output *Point_xtw) computeEndomorphism_ta(input *Point_axtw) {
 	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
 	if input.x.IsZero() {
-		// Since we assume to be on the p253 subgroup, we know that the input is actuall the neutral element, so the output is the neutral element.
-		// Note that for the other point with x==0 (i.e. the affine order-2 point), outputting the neutral element is actually correct.
+		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element.
+
 		// To avoid problems, we verify that the input is not singular.
 		if input.IsSingular() {
-			// TODO: Panic / Log? We set the output to the input to maintain the propery that Operation(singularity) == singularity, i.e. singularity has NaN-like behaviour.
+			handle_errors("Computing endomorphism of NaP of type axtw", false, input)
 			*output = Point_xtw{}
 			return
 		}
 		*output = NeutralElement_xtw
 		return
 	}
-	var yy, A, B, C FieldElement
+	var yy, E, F, H FieldElement
 	// bzz.Square(&input.z)
 	yy.Square(&input.y)
-	A.Sub(&FieldElementOne, &yy)
-	A.MulEq(&endo_c_fe) // A = c*(z^2 - y^2) == c*(1-y^2)
+	E.Sub(&FieldElementOne, &yy)
+	E.MulEq(&endo_c_fe) // E = c*(z^2 - y^2) == c*(1-y^2)
 
 	// bzz.MulEq(&endo_b_fe)
-	B.Sub(&yy, &endo_b_fe) // B = y^2 - bz^2 == y^2 - b
+	F.Sub(&yy, &endo_b_fe) // F = y^2 - bz^2 == y^2 - b
 
-	C.Add(&yy, &endo_b_fe)
-	C.MulEq(&endo_b_fe) // C = b(y^2 + bz^2) == b (y^2 + b)
+	H.Add(&yy, &endo_b_fe)
+	H.MulEq(&endo_b_fe) // H = b(y^2 + bz^2) == b (y^2 + b)
 
-	// D == t
-	// D.Mul(&input.t, &input.z) // D = t*z == x*y
+	// G == t
+	// G.Mul(&input.t, &input.z) // G = t*z == x*y
 
-	output.x.Mul(&A, &B)
-	output.y.Mul(&C, &input.t)
-	output.t.Mul(&A, &C)
-	output.z.Mul(&B, &input.t)
+	output.x.Mul(&E, &F)
+	output.y.Mul(&H, &input.t)
+	output.t.Mul(&E, &H)
+	output.z.Mul(&F, &input.t)
+}
+
+func (output *Point_efgh) computeEndomorphism_sa(input *Point_axtw) {
+	// The formula used below is valid unless for the input xy==zt is zero, which happens iff the input has order 2 or 1.
+	if input.x.IsZero() {
+		// Endo(Neutral) == Endo(Affine-order-two) == Neutral element
+
+		// To avoid problems, we verify that the input is not singular.
+		if input.IsSingular() {
+			handle_errors("Computing endomorphism of NaP of type axtw", false, input)
+			*output = Point_efgh{}
+			return
+		}
+		*output = NeutralElement_efgh
+		return
+	}
+
+	var yy FieldElement
+	// bzz.Square(&input.z)
+	yy.Square(&input.y)
+	output.e.Sub(&FieldElementOne, &yy)
+	output.e.MulEq(&endo_c_fe)    // E = c*(z^2 - y^2) == c*(1-y^2)
+	output.f.Sub(&yy, &endo_b_fe) // F = y^2 - bz^2 == y^2 - b
+	output.g = input.t            // G = t
+	output.h.Add(&yy, &endo_b_fe) //
+	output.h.MulEq(&endo_b_fe)    // H = b(y^2 + bz^2) == b (y^2 + b)
+}
+
+/*
+	Computing endomorphism on input points with efgh coordinates can be done faster than converting the input to axtw first, because we can skip computing input.t (which we do not need)
+	However, we can actually do better by observing that the output's E,F,H are multiples of input.G^2 and output.G is a multiple of input.G.
+	We clear powers of G and work in EFGH coos directly, saving a further multiplication.
+	Furthermore, we can also rewrite z^2 - y^2 = ax^2 -dt^2 and rewrite formulas a bit. This results in a formula without exceptional cases.
+*/
+
+func (output *Point_efgh) computeEndomorphism_ss(input *Point_efgh) {
+	var hh, hhByb, ff, bff, fh FieldElement
+	hh.Square(&input.h)               // h^2
+	hhByb.Mul(&hh, &endo_binverse_fe) // 1/b * h^2
+	ff.Square(&input.f)               // f^2
+	bff.Mul(&ff, &endo_b_fe)          // bf^2
+	fh.Mul(&input.f, &input.h)        //fh  -- Note: Could do (f+h)^2 - f^2 - h^2 == 2fh (the factor 2 can be accounted for by scaling the precomputed c constant) to replace Mult by Square + 3Adds
+
+	// Note that c*(z^2 - y^2) == c(ax^2 -dt^2) == c(ae^2f^2 - de^2h^2) == bcde^2(bf^2 - 1/b h^2)  [Note that b^2 == a/d for the last equation]
+	// Clearing input.e from output.e and output.g and clearing b * input.g^2 from output.f and output.h gives:
+	var temp FieldElement // required since input and output might alias
+	temp.Sub(&bff, &hhByb)
+	temp.MulEq(&input.e)
+	output.e.Mul(&endo_bcd_fe, &temp) // bcd * e * (bf^2 - 1/b h^2) == 1/e * c * (z^2 - y^2)
+	output.f.Sub(&hhByb, &ff)         // 1/b h^2 - f^2 == 1/b * 1/g^2 (g^2h^2 - b g^2f^2) == 1/b * 1/g^2 * (y^2- bz^2)
+	output.g.Mul(&input.g, &fh)       // fgh == 1/e * efgh == 1/e * xy == 1/e * tz
+	output.h.Add(&hh, &bff)           // h^2 + bf^2 = 1/b * 1/g^2 * b * (g^2h^2 + bf^2g^2) == 1/b * 1/g^2 * b(y^2 + bz^2)
+}
+
+func (output *Point_xtw) computeEndomorphism_ts(input *Point_efgh) {
+	var hh, hhByb, ff, bff, fh FieldElement
+	hh.Square(&input.h)               // h^2
+	hhByb.Mul(&hh, &endo_binverse_fe) // 1/b * h^2
+	ff.Square(&input.f)               // f^2
+	bff.Mul(&ff, &endo_b_fe)          // bf^2
+	fh.Mul(&input.f, &input.h)        //fh  -- Note: Could do (f+h)^2 - f^2 - h^2 == 2fh (the factor 2 can be accounted for by scaling the precomputed c constant) to replace Mult by Square + 3Adds
+
+	// Note that c*(z^2 - y^2) == c(ax^2 -dt^2) == c(ae^2f^2 - de^2h^2) == bcde^2(bf^2 - 1/b h^2)  [Note that b^2 == a/d for the last equation]
+	// Clearing input.e from output.e and output.g and clearing b * input.g^2 from output.f and output.h gives:
+	var E, F, G, H FieldElement
+
+	E.Sub(&bff, &hhByb)
+	E.MulEq(&input.e)
+	E.MulEq(&endo_bcd_fe) // bcd * e * (bf^2 - 1/b h^2) == 1/e * c * (z^2 - y^2)
+	F.Sub(&hhByb, &ff)    // 1/b h^2 - f^2 == 1/b * 1/g^2 (g^2h^2 - b g^2f^2) == 1/b * 1/g^2 * (y^2- bz^2)
+	G.Mul(&input.g, &fh)  // fgh == 1/e * efgh == 1/e * xy == 1/e * tz
+	H.Add(&hh, &bff)      // h^2 + bf^2 = 1/b * 1/g^2 * b * (g^2h^2 + bf^2g^2) == 1/b * 1/g^2 * b(y^2 + bz^2)
+
+	output.x.Mul(&E, &F)
+	output.y.Mul(&G, &H)
+	output.t.Mul(&E, &H)
+	output.z.Mul(&F, &G)
 }

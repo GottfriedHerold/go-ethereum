@@ -12,16 +12,6 @@ type Point_axtw struct {
 // NeutralElement_axtw denotes the Neutral Element of the Bandersnatch curve in affine extended twisted Edwards coordinates.
 var NeutralElement_axtw Point_axtw = Point_axtw{x: FieldElementZero, y: FieldElementOne, t: FieldElementZero}
 
-// X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates, i.e. X/Z
-func (p *Point_axtw) X_affine() FieldElement {
-	return p.x
-}
-
-// Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates, i.e. Y/Z
-func (p *Point_axtw) Y_affine() FieldElement {
-	return p.y
-}
-
 // X_projective returns the X coordinate of the given point P in projective twisted Edwards coordinates.
 // Note that in general, calling functions on P other than X_projective(), Y_projective(), Z() might change the representations of P at will,
 // so callers must not interleave calling other functions.
@@ -43,23 +33,14 @@ func (p *Point_axtw) Z_projective() FieldElement {
 	return FieldElementOne
 }
 
-// func (P *Point_axtw) MakeAffine() {
-//	// Do nothing.
-//}
-
-// func (p *Point_axtw) IsAffine() bool {
-// 	return true
-// }
-
-// AffineExtended returns a copy of the point in affine extended coordinates (i.e. a copy)
-func (p *Point_axtw) AffineExtended() Point_axtw {
-	// technically, we could return *p. There is no way for the caller to modify it without copying it on the caller side.
-	return Point_axtw{x: p.x, y: p.y, t: p.t}
+// X_affine returns the X coordinate of the given point in affine twisted Edwards coordinates, i.e. X/Z
+func (p *Point_axtw) X_affine() FieldElement {
+	return p.x
 }
 
-// ExtendedTwistedEdwards returns a copy of the point in extended twisted Edwards coordinates.
-func (p *Point_axtw) ExtendedTwistedEdwards() Point_xtw {
-	return Point_xtw{x: p.x, y: p.y, t: p.t, z: FieldElementOne}
+// Y_affine returns the Y coordinate of the given point in affine twisted Edwards coordinates, i.e. Y/Z
+func (p *Point_axtw) Y_affine() FieldElement {
+	return p.y
 }
 
 // IsNeutralElement checks if the point P is the neutral element of the curve (modulo the identification of P with P+A).
@@ -88,26 +69,6 @@ func (p *Point_axtw) IsNeutralElement_exact() bool {
 		panic("axtw Point with x==0, y!=0, t!=0 encountered. This must never happen")
 	}
 	return p.y.IsOne() // p.y must be either 1 or -1
-}
-
-// SetNeutral sets the Point p to the neutral element of the curve.
-func (p *Point_axtw) SetNeutral() {
-	*p = NeutralElement_axtw
-}
-
-// IsSingular checks whether the point is singular (x==y==0, indeed most likely x==y==t==0). Singular points must never appear if the library is used correctly. They can appear by
-// a) performing operations on points that are not in the correct subgroup
-// b) zero-initialized points are singular (Go lacks constructors to fix that).
-func (p *Point_axtw) IsSingular() bool {
-	return p.x.IsZero() && p.y.IsZero()
-}
-
-// IsAtInfinity tests whether the point is an infinite (neccessarily order-2) point. Since these points cannot be represented in affine coordinates in the first place, this always returns false.
-func (p *Point_axtw) IsAtInfinity() bool {
-	if p.IsSingular() {
-		return handle_errors("When chekcking whether an axtw point is infinite, a NaP was encountered", false, p)
-	}
-	return false
 }
 
 // IsEqual compares two curve points for equality, working modulo the P = P + A identification. The two points do not have the be in the same coordinate format.
@@ -147,21 +108,49 @@ func (p *Point_axtw) IsEqual_exact(other CurvePointRead) bool {
 	}
 }
 
-// SetFrom initializes the point from the given input point (which may have a different coordinate format)
-func (p *Point_axtw) SetFrom(input CurvePointRead) {
-	*p = input.AffineExtended()
+// IsAtInfinity tests whether the point is an infinite (neccessarily order-2) point. Since these points cannot be represented in affine coordinates in the first place, this always returns false.
+func (p *Point_axtw) IsAtInfinity() bool {
+	if p.IsSingular() {
+		return handle_errors("When chekcking whether an axtw point is infinite, a NaP was encountered", false, p)
+	}
+	return false
 }
 
-// Clone creates a copy of the given point as a CurvePointRead. (Be aware that this interface stores pointers)
+// IsSingular checks whether the point is singular (x==y==0, indeed most likely x==y==t==0). Singular points must never appear if the library is used correctly. They can appear by
+// a) performing operations on points that are not in the correct subgroup
+// b) zero-initialized points are singular (Go lacks constructors to fix that).
+func (p *Point_axtw) IsSingular() bool {
+	return p.x.IsZero() && p.y.IsZero()
+}
+
+// AffineExtended returns a copy of the point in affine extended coordinates (i.e. a copy)
+func (p *Point_axtw) AffineExtended() Point_axtw {
+	// technically, we could return *p. There is no way for the caller to modify it without copying it on the caller side.
+	return Point_axtw{x: p.x, y: p.y, t: p.t}
+}
+
+// ExtendedTwistedEdwards returns a copy of the point in extended twisted Edwards coordinates.
+func (p *Point_axtw) ExtendedTwistedEdwards() Point_xtw {
+	return Point_xtw{x: p.x, y: p.y, t: p.t, z: FieldElementOne}
+}
+
+// Clone creates a copy of the given point as a CurvePointRead. (Be aware that the returned interface value stores a pointer)
 func (p *Point_axtw) Clone() CurvePointRead {
 	p_copy := *p
 	return &p_copy
 }
 
+// Point_axtw::SerializeShort and Point_axtw::SerializeLong are defined directly in curve_point_impl_serialize.go
+
 // String prints the point in X:Y:T - format
 func (p *Point_axtw) String() string {
 	// Not the most efficient way, but good enough.
 	return p.x.String() + ":" + p.y.String() + ":" + p.t.String()
+}
+
+// SetFrom initializes the point from the given input point (which may have a different coordinate format)
+func (p *Point_axtw) SetFrom(input CurvePointRead) {
+	*p = input.AffineExtended()
 }
 
 // Add performs curve point addition according to the group law.
@@ -180,6 +169,11 @@ func (p *Point_axtw) Sub(x, y CurvePointRead) {
 	var temp Point_xtw
 	temp.Sub(x, y)
 	p.SetFrom(&temp)
+}
+
+func (p *Point_axtw) Double(in CurvePointRead) {
+	// TODO: Specialize
+	p.Add(in, in)
 }
 
 // Neg computes the negative of the point wrt the elliptic curve group law.
@@ -206,17 +200,9 @@ func (p *Point_axtw) Endo_safe(input CurvePointRead) {
 	p.SetFrom(&temp)
 }
 
-// EndoEq applies the endomorphism on the given point. p.EndoEq() is shorthand for p.EndoEq(&p)
-func (p *Point_axtw) EndoEq() {
-	var temp Point_xtw
-	temp.computeEndomorphism_ta(p)
-	p.SetFrom(&temp)
-}
-
-// NeqEq replaces the given point by its negative (wrt the elliptic curve group addition law)
-func (p *Point_axtw) NegEq() {
-	p.y.NegEq()
-	p.t.NegEq()
+// SetNeutral sets the Point p to the neutral element of the curve.
+func (p *Point_axtw) SetNeutral() {
+	*p = NeutralElement_axtw
 }
 
 // AddEq adds (via the elliptic curve group addition law) the given curve point x (in any coordinate format) to the received p, overwriting p.
@@ -227,4 +213,21 @@ func (p *Point_axtw) AddEq(x CurvePointRead) {
 // SubEq subtracts (via the elliptic curve group addition law) the given curve point x (in any coordinate format) from the received p, overwriting p.
 func (p *Point_axtw) SubEq(x CurvePointRead) {
 	p.Sub(p, x)
+}
+
+func (p *Point_axtw) DoubleEq() {
+	p.Double(p)
+}
+
+// NeqEq replaces the given point by its negative (wrt the elliptic curve group addition law)
+func (p *Point_axtw) NegEq() {
+	p.y.NegEq()
+	p.t.NegEq()
+}
+
+// EndoEq applies the endomorphism on the given point. p.EndoEq() is shorthand for p.EndoEq(&p)
+func (p *Point_axtw) EndoEq() {
+	var temp Point_xtw
+	temp.computeEndomorphism_ta(p)
+	p.SetFrom(&temp)
 }
