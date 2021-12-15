@@ -309,24 +309,26 @@ func (p *Point_xtw) Sub(x CurvePointRead, y CurvePointRead) {
 	}
 }
 
-func (p *Point_xtw) Neg(from CurvePointRead) {
-	switch from_real := from.(type) {
+func (p *Point_xtw) Neg(input CurvePointRead) {
+	switch input := input.(type) {
 	case *Point_xtw:
-		p.neg_tt(from_real)
+		p.neg_tt(input)
+	case *Point_axtw:
+		p.neg_ta(input)
 	default:
-		p.SetFrom(from_real)
+		p.SetFrom(input)
 		p.NegEq()
 	}
 }
 
-func (p *Point_xtw) Endo(from CurvePointRead) {
-	switch from_real := from.(type) {
+func (p *Point_xtw) Endo(input CurvePointRead) {
+	switch input := input.(type) {
 	case *Point_xtw:
-		p.computeEndomorphism_tt(from_real)
+		p.computeEndomorphism_tt(input)
 	case *Point_axtw:
-		p.computeEndomorphism_ta(from_real)
+		p.computeEndomorphism_ta(input)
 	default:
-		p.SetFrom(from)
+		p.SetFrom(input)
 		p.computeEndomorphism_tt(p)
 	}
 }
@@ -422,6 +424,8 @@ func (p *Point_xtw) SetFrom(input CurvePointRead) {
 		p.y = input.y
 		p.t = input.t
 		p.z.SetOne()
+	case *Point_efgh:
+		*p = input.ExtendedTwistedEdwards()
 	default:
 		p.x = input.X_projective()
 		p.y = input.Y_projective()

@@ -148,7 +148,7 @@ func (p *Point_efgh) IsNaP() bool {
 
 	if p.g.IsZero() && p.e.IsZero() {
 		return true
-		panic("Type-2 efgh NaP encountered") // This is for testing only. -- remove / reconsider later.
+		panic("Type-2 efgh NaP encountered") // This is for testing only. -- remove / reconsider later; maybe we can avoid NaP-type2.
 	}
 
 	if p.f.IsZero() {
@@ -157,6 +157,9 @@ func (p *Point_efgh) IsNaP() bool {
 
 	return false
 }
+
+// Note: Going eghj -> axtw directly is cheaper by 1 multiplication compared to going via xtw.
+// The reason is that we normalize first and then compute the t coordinate. This effectively saves comptuing t *= z^-1.
 
 func (P *Point_efgh) AffineExtended() (ret Point_axtw) {
 	P.normalize_affine()
@@ -339,7 +342,7 @@ func (p *Point_efgh) SetFrom(input CurvePointRead) {
 			p.f = input.z
 			p.g = input.z
 			p.h = input.y
-		} else { // Point at infinite or NaP
+		} else { // Point at infinity or NaP
 			// usually equivalent to the above, but singular iff input has x==t==0
 			p.e = input.x
 			p.f = input.x

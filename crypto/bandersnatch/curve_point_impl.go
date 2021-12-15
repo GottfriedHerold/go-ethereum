@@ -27,3 +27,10 @@ func (out *Point_efgh) neg_ss(input *Point_efgh) {
 	out.g = input.g
 	out.h = input.h
 }
+
+func (out *Point_xtw) neg_ta(input *Point_axtw) {
+	out.x.Neg(&input.x)
+	out.y = input.y
+	out.t.Neg(&input.t)
+	out.z.SetOne()
+}

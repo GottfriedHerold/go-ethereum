@@ -1,6 +1,9 @@
 package bandersnatch
 
-import "sync"
+import (
+	"reflect"
+	"sync"
+)
 
 // InvalidPointErrorHandler is the function type for error handler that can be installed for dealing with NaPs.
 // When such a handler is called, reason is a descriptive error message, comparison tells whether the NaP was detected during a comparison (in which case the return value of the function should be the comparison result),
@@ -16,22 +19,6 @@ func trivial_error_handler(string, bool, ...CurvePointRead) bool {
 func panic_error_handler(reason string, _ bool, _ ...CurvePointRead) bool {
 	// Should be also log / output the points?
 	panic(reason)
-}
-
-// was InvalidPointEncountered(f) calls f() and returns whether the napEncountered - error handler was triggered during execution of f.
-// This function is mainly used in testing.
-func wasInvalidPointEncountered(fun func()) bool {
-	var old_handler_ptr *InvalidPointErrorHandler // indirection to avoid locking.
-	var error_bit bool = false
-	new_handler := func(reason string, comparison bool, points ...CurvePointRead) bool {
-		error_bit = true
-		return (*old_handler_ptr)(reason, comparison, points...)
-	}
-	old_handler := SetNaPErrorHandler(new_handler)
-	old_handler_ptr = &old_handler
-	defer SetNaPErrorHandler(*old_handler_ptr)
-	fun()
-	return error_bit
 }
 
 // currently installed NaP error handler. Being a mutable global object, this is protected by mutex.
@@ -63,4 +50,54 @@ func napEncountered(reason string, comparison bool, points ...CurvePointRead) bo
 	// Note that this essentially locks the mutex, gets a copy of the handler and releases the mutex before actually calling f.
 	f := GetNaPErrorHandler()
 	return f(reason, comparison, points...)
+}
+
+// was InvalidPointEncountered(f) calls f() and returns whether the napEncountered - error handler was triggered during execution of f.
+// This function is mainly used in testing.
+func wasInvalidPointEncountered(fun func()) bool {
+	var old_handler_ptr *InvalidPointErrorHandler // indirection to avoid locking.
+	var error_bit bool = false
+	new_handler := func(reason string, comparison bool, points ...CurvePointRead) bool {
+		error_bit = true
+		return (*old_handler_ptr)(reason, comparison, points...)
+	}
+	old_handler := SetNaPErrorHandler(new_handler)
+	old_handler_ptr = &old_handler
+	defer SetNaPErrorHandler(*old_handler_ptr)
+	fun()
+	return error_bit
+}
+
+// guardForInvalidPoints checks whether fun(args...)==expected, while monitoring for NaP-handling. expect_singular determines whether we expect a NaP.
+func guardForInvalidPoints(expected interface{}, expect_singular bool, error_message string, fun interface{}, args ...interface{}) (ok bool, err string) {
+	var old_handler_ptr *InvalidPointErrorHandler
+	var error_bit bool = false
+	new_handler := func(reason string, comparison bool, points ...CurvePointRead) bool {
+		error_bit = true
+		return (*old_handler_ptr)(reason, comparison, points...)
+	}
+	old_handler := SetNaPErrorHandler(new_handler)
+	old_handler_ptr = &old_handler
+	defer SetNaPErrorHandler(*old_handler_ptr)
+	var got interface{}
+	fun_reflected := reflect.ValueOf(fun)
+	// To get better error messages
+	if fun_reflected.Kind() != reflect.Func {
+		panic("guardForInvalidPoints must be called with a function as fourth argument")
+	}
+	function_arguments := make([]reflect.Value, len(args))
+	for i := 0; i < len(args); i++ {
+		function_arguments[i] = reflect.ValueOf(args[i])
+	}
+	got = fun_reflected.Call(function_arguments)[0].Interface()
+	if expect_singular != error_bit {
+		if error_bit {
+			return false, "When performing check with intended error message " + error_message + ", an unexpected NaP was encountered"
+		}
+		return false, "When performing check with intended error message " + error_message + ", NaP handler was not called, but was expected to."
+	}
+	if expected != got {
+		return false, error_message // outputing expected and got would be nice, but that is messy (because we cannot ask expected and got to be fmt.Stringers, as bools would not satisfy that)
+	}
+	return true, ""
 }

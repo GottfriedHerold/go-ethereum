@@ -84,8 +84,6 @@ type CurvePointRead interface {
 
 	IsNeutralElement() bool
 	IsNeutralElement_exact() bool
-	// IsAffine() bool // TODO: Consier removal / renaming
-	// MakeAffine()    // TODO: Consider removal / renaming
 	IsEqual(CurvePointRead) bool
 	IsEqual_exact(CurvePointRead) bool
 	IsAtInfinity() bool

@@ -49,6 +49,19 @@ func PointTypeToString(c PointType) string {
 	}
 }
 
+func canRepresentInfinity(pointType PointType) bool {
+	switch pointType {
+	case pointTypeXTW:
+		return true
+	case pointTypeAXTW:
+		return false
+	case pointTypeEFGH:
+		return true
+	default:
+		panic("Unknown type")
+	}
+}
+
 func GetPointType(p CurvePointRead) PointType {
 	// Could do a return PointType(reflect.TypeOf(p)), but we need to check that it is from a given list anyway.
 	switch p.(type) {
@@ -141,6 +154,15 @@ func AppendTestSamples(sample_list *[]TestSample, exclude_mask PointFlags, point
 			panic("Creating test samples failed. Samples mix up number of points per sample")
 		}
 		if item.AnyFlags()&exclude_mask != 0 {
+			continue
+		}
+		good := true
+		for i := 0; i < int(individual_sizes); i++ {
+			if (!canRepresentInfinity(point_types[i])) && item.Flags[i].CheckFlag(Case_infinite) {
+				good = false
+			}
+		}
+		if !good {
 			continue
 		}
 		*sample_list = append(*sample_list, item.CopyXTWToType(point_types))
