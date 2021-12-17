@@ -61,6 +61,29 @@ func TestPointsOnCurve(t *testing.T) {
 	}
 }
 
+// Test whether *Point_xtw::Add(*Point_xtw, *Point_xtw) is consistent with addNaive_ttt. Note that *Point_xtw::Add(*Point_xtw, *Point_xtw) is checked by other tests
+// for consistency with all our other variants.
+func TestCompareAddAgainstNaive(t *testing.T) {
+	make_samples2_and_run_tests(t, checkfun_addnaive, "Addition inconsistent with naive definition", pointTypeXTW, pointTypeXTW, 20, 0)
+}
+
+func checkfun_addnaive(s TestSample) (bool, string) {
+	s.AssertNumberOfPoints(2)
+	flags := s.AnyFlags()
+	if flags.CheckFlag(Case_singular) || flags.CheckFlag(Case_outside_goodgroup) {
+		return true, ""
+	}
+	var point0 Point_xtw = *(s.Points[0].(*Point_xtw))
+	var point1 Point_xtw = *(s.Points[0].(*Point_xtw))
+	var result1, result2 Point_xtw
+	result1.Add(&point0, &point1)
+	result2.addNaive_ttt(&point0, &point1)
+	if !result1.IsEqual_exact(&result2) {
+		return false, "Addition differs from naive defininition"
+	}
+	return true, ""
+}
+
 /*
 OLD TESTS -- They work, but we want to have coverage displayed for the new tests only
 

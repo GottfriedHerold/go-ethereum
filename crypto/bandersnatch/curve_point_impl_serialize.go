@@ -71,7 +71,7 @@ func default_SerializeLong(receiver CurvePointRead, output io.Writer) (bytes_wri
 		return 0, ErrCannotSerializeNaP
 	}
 	var receiver_copy Point_axtw = receiver.AffineExtended()
-	bytes_written, err = receiver_copy.SerializeShort(output)
+	bytes_written, err = receiver_copy.SerializeLong(output)
 	return
 }
 
@@ -100,12 +100,20 @@ func mapToFieldElement(input CurvePointRead) (ret FieldElement) {
 }
 
 func (p *Point_axtw) SerializeShort(output io.Writer) (bytes_written int, err error) {
+	if p.IsNaP() {
+		napEncountered("trying to serialize NaP in short format", false, p)
+		return 0, ErrCannotSerializeNaP
+	}
 	xAbsy := p.specialSerialzeXCoo_a()
 	bytes_written, err = xAbsy.Serialize(output, binary.BigEndian)
 	return
 }
 
 func (p *Point_axtw) SerializeLong(output io.Writer) (bytes_written int, err error) {
+	if p.IsNaP() {
+		napEncountered("trying to serialize NaP in short format", false, p)
+		return 0, ErrCannotSerializeNaP
+	}
 	temp := p.specialSerialzeYCoo_a()
 	bytes_written, err = temp.SerializeWithPrefix(output, PrefixBits(0b10), 2, binary.BigEndian)
 	if err != nil {
