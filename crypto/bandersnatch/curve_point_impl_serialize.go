@@ -18,7 +18,7 @@ var ErrWrongSignY = errors.New("deserialization: encountered affine Y coordinate
 var ErrUnrecognizedFormat = errors.New("deserialization: could not automatically detect serialization format")
 
 // Default implementation of DeserializeShort in terms of Point_axtw::DeserializeShort
-func default_DeserializeShort(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+func default_DeserializeShort(receiver CurvePointWrite, input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var result Point_axtw
 	bytes_read, err = result.DeserializeShort(input, trusted)
 	if err == nil || err == ErrNonNormalizedDeserialization {
@@ -28,7 +28,7 @@ func default_DeserializeShort(receiver CurvePointWrite, input io.Reader, trusted
 }
 
 // Default implementation of DeserializeLong in terms of Point_axtw::DeserializeLong
-func default_DeserializeLong(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+func default_DeserializeLong(receiver CurvePointWrite, input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var result Point_axtw
 	bytes_read, err = result.DeserializeLong(input, trusted)
 	if err == nil || err == ErrNonNormalizedDeserialization {
@@ -38,7 +38,7 @@ func default_DeserializeLong(receiver CurvePointWrite, input io.Reader, trusted 
 }
 
 // Default implementation of DeserializeAuto in terms of Point_axtw::DeserializeAuto
-func default_DeserializeAuto(receiver CurvePointWrite, input io.Reader, trusted bool) (bytes_read int, err error) {
+func default_DeserializeAuto(receiver CurvePointWrite, input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var result Point_axtw
 	bytes_read, err = result.DeserializeAuto(input, trusted)
 	if err == nil || err == ErrNonNormalizedDeserialization {
@@ -181,7 +181,7 @@ func affineFromXYSignY(xTemp *FieldElement, yTemp *FieldElement, trusted bool) (
 	return
 }
 
-func (p *Point_axtw) DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_axtw) DeserializeShort(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var NonNormalized bool = false // special error flag for reading inputs that are not in the range 0<=. < BaseFieldSize. This error needs special treatment.
 
 	var xTemp FieldElement
@@ -197,7 +197,7 @@ func (p *Point_axtw) DeserializeShort(input io.Reader, trusted bool) (bytes_read
 	}
 
 	// We write to temp instead of directly to p. This way, p is untouched on errors others than ErrNonNormalizedDeserialization.
-	temp, err := affineFromXSignY(&xTemp, trusted)
+	temp, err := affineFromXSignY(&xTemp, bool(trusted))
 	if err == nil {
 		*p = temp
 		if NonNormalized {
@@ -209,7 +209,7 @@ func (p *Point_axtw) DeserializeShort(input io.Reader, trusted bool) (bytes_read
 	return
 }
 
-func (p *Point_axtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_axtw) DeserializeLong(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var NonNormalized bool = false // special error flag for reading inputs that are not in the range 0<=. < BaseFieldSize. This error needs special treatment
 
 	var ySignY, xSignY FieldElement
@@ -235,8 +235,8 @@ func (p *Point_axtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read 
 	}
 
 	// If we get here, we got no error other than ErrNonNormalizedDeserialization so far.
-	// We write to temp instead of directly to p, since we only write if there is no error.
-	temp, err := affineFromXYSignY(&xSignY, &ySignY, trusted)
+	// We write to temp instead of directly to p, since we only overwrite p if there is no error.
+	temp, err := affineFromXYSignY(&xSignY, &ySignY, bool(trusted))
 	if err == nil {
 		*p = temp
 		if NonNormalized {
@@ -246,11 +246,16 @@ func (p *Point_axtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read 
 	return
 }
 
-func (p *Point_axtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_axtw) DeserializeAuto(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	var fieldElement_read FieldElement
 	var prefix_read PrefixBits
 	var temp Point_axtw
 	bytes_read, prefix_read, err = fieldElement_read.deserializeAndGetPrefix(input, 1, binary.BigEndian)
+
+	// The point here is that in long deserialization format, the bit-stream starts with 10..., because
+	// the first element (as an integer) has sign >=0, hence is actually at most 254 bits.
+	// The second bit after reading a 1 might signal some extension this library does not understand.
+	// We want to abort rather than misinterpretso and we treat this as a hard error.
 	if err == ErrNonNormalizedDeserialization {
 		err = ErrUnrecognizedFormat
 	}
@@ -258,8 +263,8 @@ func (p *Point_axtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read 
 		return
 	}
 	if prefix_read == PrefixBits(0b0) {
-		temp, err = affineFromXSignY(&fieldElement_read, trusted)
-		if err != nil {
+		temp, err = affineFromXSignY(&fieldElement_read, bool(trusted))
+		if err == nil {
 			*p = temp
 		}
 		return
@@ -279,7 +284,7 @@ func (p *Point_axtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read 
 		if err != nil {
 			return
 		}
-		temp, err = affineFromXYSignY(&fieldElement2_read, &fieldElement_read, trusted)
+		temp, err = affineFromXYSignY(&fieldElement2_read, &fieldElement_read, bool(trusted))
 		if err == nil {
 			*p = temp
 		}

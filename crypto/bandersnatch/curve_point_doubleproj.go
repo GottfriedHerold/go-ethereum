@@ -371,14 +371,14 @@ func (p *Point_efgh) SetFrom(input CurvePointRead) {
 	}
 }
 
-func (p *Point_efgh) DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_efgh) DeserializeShort(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeShort(p, input, trusted)
 }
 
-func (p *Point_efgh) DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_efgh) DeserializeLong(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeLong(p, input, trusted)
 }
 
-func (p *Point_efgh) DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_efgh) DeserializeAuto(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeAuto(p, input, trusted)
 }

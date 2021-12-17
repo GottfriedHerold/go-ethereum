@@ -137,15 +137,15 @@ func (p *Point_xtw) SerializeShort(output io.Writer) (bytes_written int, err err
 	return default_SerializeShort(p, output)
 }
 
-func (p *Point_xtw) DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_xtw) DeserializeShort(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeShort(p, input, trusted)
 }
 
-func (p *Point_xtw) DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_xtw) DeserializeLong(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeLong(p, input, trusted)
 }
 
-func (p *Point_xtw) DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error) {
+func (p *Point_xtw) DeserializeAuto(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error) {
 	return default_DeserializeAuto(p, input, trusted)
 }
 

@@ -55,6 +55,13 @@ var (
 	squareRootDbyA_fe FieldElement = initFieldElementFromString(squareRootDByA_string)
 )
 
+type IsPointTrusted = bool // Golang does not have enum types, sadly.
+
+const (
+	TrustedInput   IsPointTrusted = true
+	UntrustedInput IsPointTrusted = false
+)
+
 /*
 	Caveat: Bandersnatch is typically represented as a twisted Edwards curve, which means there are singularities
 	at infinity. These singularities are not in the large-prime order subgroup. (the cofactor is 4)
@@ -117,9 +124,9 @@ type CurvePointWrite interface {
 
 	SetFrom(CurvePointRead)
 
-	DeserializeShort(input io.Reader, trusted bool) (bytes_read int, err error)
-	DeserializeLong(input io.Reader, trusted bool) (bytes_read int, err error)
-	DeserializeAuto(input io.Reader, trusted bool) (bytes_read int, err error)
+	DeserializeShort(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error)
+	DeserializeLong(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error)
+	DeserializeAuto(input io.Reader, trusted IsPointTrusted) (bytes_read int, err error)
 	// ClearCofactor()
 }
 
