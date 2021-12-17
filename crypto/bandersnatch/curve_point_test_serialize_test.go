@@ -6,33 +6,49 @@ import (
 	"testing"
 )
 
-/*
-func checkfun_type_consistency(s TestSample) (bool, string) {
+func checkfun_serialization_type_consistency(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	singular := s.Flags[0].CheckFlag(Case_singular)
 	infinite := s.Flags[0].CheckFlag(Case_infinite)
-	expect_error := singular || infinite
+	if infinite || singular {
+		return true, "" // converted by checkfun_NaP_serialization. No need to complicate things here
+	}
 	var buf1, buf2 bytes.Buffer
 
-	point_xtw := s.Points[0].ExtendedTwistedEdwards()
-	bytes_written1, err1 := s.Points[0].SerializeLong(&buf1)
-	bytes_written2, err2 := point_xtw.SerializeLong(&buf1)
+	point_axtw := s.Points[0].AffineExtended()
+	_, err1 := s.Points[0].SerializeLong(&buf1)
+	_, err2 := point_axtw.SerializeLong(&buf2)
 
-	if expect_error {
-		if err1 == nil {
-			return false, "SerializeLong did not give an error even though it should"
-		}
-		if err2 == nil {
-			return false, "Point_xw::SerializeLong did not give an error even though it should"
-		}
-	} else {
-		if err1 != nil {
-			return false, SerializeLong
-		}
+	if err1 != nil || err2 != nil {
+		return false, "Unexpected error in checkfun_type_consistency. Refer to output of checkfun_NaP_serialization"
 	}
 
+	if buf1.Len() != buf2.Len() {
+		return false, "SerializeLong did not write same number of bytes depending on receiver type"
+	}
+	if !bytes.Equal(buf1.Bytes(), buf2.Bytes()) {
+		return false, "SerializeLong did not output the same bytes depending on receiver type"
+	}
+
+	buf1.Reset()
+	buf2.Reset()
+	_, err1 = s.Points[0].SerializeShort(&buf1)
+	_, err2 = point_axtw.SerializeShort(&buf2)
+
+	if err1 != nil || err2 != nil {
+		return false, "Unexpected error in checkfun_type_consistency. Refer to output of checkfun_NaP_serialization"
+	}
+
+	if buf1.Len() != buf2.Len() {
+		return false, "SerializeShort did not write same number of bytes depending on receiver type"
+	}
+	if !bytes.Equal(buf1.Bytes(), buf2.Bytes()) {
+		return false, "SerializeShort did not output the same bytes depending on receiver type"
+	}
+
+	return true, ""
+
 }
-*/
 
 func checkfun_NaP_serialization(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
@@ -128,6 +144,7 @@ func test_serialization_properties(t *testing.T, receiverType PointType, exclude
 	point_string := PointTypeToString(receiverType)
 	// var type1, type2 PointType
 	make_samples1_and_run_tests(t, checkfun_NaP_serialization, "Unexpected behaviour when serialializing wrt NaPs or infinite points "+point_string, receiverType, 10, excludedFlags)
+	make_samples1_and_run_tests(t, checkfun_serialization_type_consistency, "Unexpected behaviour when comparing serialization depencency on receiver type "+point_string, receiverType, 10, excludedFlags)
 }
 
 func TestSerializationForXTW(t *testing.T) {
