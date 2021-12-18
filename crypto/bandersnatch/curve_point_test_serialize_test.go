@@ -140,6 +140,7 @@ func checkfun_serialization_type_consistency(s TestSample) (bool, string) {
 	return true, ""
 }
 
+// Checks roundtrip-capabilities on the happy path, i.e. if the points are in the correct subgroup.
 func checkfun_serialization_roundtrip(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	singular := s.Flags[0].CheckFlag(Case_singular)
@@ -278,12 +279,310 @@ func checkfun_serialization_roundtrip(s TestSample) (bool, string) {
 	return true, ""
 }
 
+func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
+	s.AssertNumberOfPoints(1)
+	singular := s.Flags[0].CheckFlag(Case_singular)
+	infinite := s.Flags[0].CheckFlag(Case_infinite)
+	not_in_goodgroup := s.Flags[0].CheckFlag(Case_outside_goodgroup)
+	torsion2 := s.Flags[0].CheckFlag(Case_2torsion)
+	if infinite || singular || not_in_goodgroup {
+		return true, "" // We only care about points in the p253 subgroup, modifying them as needed to get the cosets. The behaviour on the 2-torsion is
+	}
+
+	// point_outN, point_outA, point_outE are in different cosets of full curve / p253
+	var point_outN CurvePointRead = s.Points[0].Clone()
+	pointType := GetPointType(point_outN)
+	var point_outA CurvePoint = MakeCurvePointFromType(pointType)
+	var point_outE CurvePoint = MakeCurvePointFromType(pointType)
+
+	var point_inN CurvePoint = MakeCurvePointFromType(pointType)
+	var point_inA CurvePoint = MakeCurvePointFromType(pointType)
+	var point_inE CurvePoint = MakeCurvePointFromType(pointType)
+
+	// serves as a sentinel value to check whether the value was overwritten (on Deserialization failure, it should not be)
+	var sentinel_point Point_xtw
+	sentinel_point.SetFrom(&example_generator_xtw)
+
+	point_inN.SetFrom(&sentinel_point)
+	point_inA.SetFrom(&sentinel_point)
+	point_inE.SetFrom(&sentinel_point)
+
+	// This is just an arbitrary non-2-torsion value outside the good subgroup.
+	point_outE.SetFrom(&example_generator_xtw)
+	point_outE.DoubleEq()
+	point_outE.AddEq(&exceptionalPoint_1_xtw)
+
+	point_outA.Add(point_outN, &orderTwoPoint_xtw)
+	if !torsion2 {
+		point_outE.Add(point_outN, &exceptionalPoint_1_xtw) // this would fail if s.Points[0] == point_out was 2-torsion, because a) we hit a potential singular case of addition and b) pointType might not be able to represent points at infinity.
+	}
+	if point_outA.IsNaP() || (!torsion2 && point_outE.IsNaP()) {
+		panic("checkfun_roundtrip_modulo2torsion: Unexpected NaP")
+	}
+
+	// Note: point_outE is always outside the good subgroup, even if torsion2 == true. It is also NOT a point at infinity.
+
+	var bufN, bufA, bufE bytes.Buffer
+	var errN, errA, errE error
+
+	_, errN = point_outN.SerializeLong(&bufN)
+	_, errA = point_outA.SerializeLong(&bufA)
+	_, errE = point_outE.SerializeLong(&bufE)
+
+	if errN != nil || errA != nil {
+		return false, "SerializeLong unexpectedly failed"
+	}
+	if errE != nil {
+		return false, "SerializeLong failed when trying to SerializeLong outside good subgroup. Error was " + errE.Error() // This is not "really" a problem.
+	}
+
+	_, errN = point_inN.DeserializeLong(&bufN, UntrustedInput)
+	_, errA = point_inA.DeserializeLong(&bufA, UntrustedInput)
+	_, errE = point_inE.DeserializeLong(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "untrusted deserialization unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	if errE != ErrNotInSubgroup {
+		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeLong"
+	}
+
+	if !point_inE.IsEqual_exact(&sentinel_point) {
+		return false, "failed DeserializeLong overwrote point"
+	}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "untrusted DeserializeLong had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "untrusted DeserializeLong did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with trusted; this time without E
+	bufN.Reset()
+	bufA.Reset()
+	// bufE.Reset()
+	point_outN.SerializeLong(&bufN)
+	point_outA.SerializeLong(&bufA)
+	// point_outE.SerializeLong(&bufE)
+
+	_, errN = point_inN.DeserializeLong(&bufN, TrustedInput)
+	_, errA = point_inA.DeserializeLong(&bufA, TrustedInput)
+	// _, errE = point_inE.DeserializeLong(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "trusted DeserializeLong unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	// if errE != ErrNotInSubgroup {
+	// 	return false, "Did not get Not-In-Subgroup error upon trusted DeserializeLong"
+	//}
+
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "Trusted DeserializeLong had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "trusted DeserializeLong did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with auto, untrusted.
+	bufN.Reset()
+	bufA.Reset()
+	bufE.Reset()
+	point_outN.SerializeLong(&bufN)
+	point_outA.SerializeLong(&bufA)
+	point_outE.SerializeLong(&bufE)
+
+	_, errN = point_inN.DeserializeAuto(&bufN, UntrustedInput)
+	_, errA = point_inA.DeserializeAuto(&bufA, UntrustedInput)
+	_, errE = point_inE.DeserializeAuto(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "untrusted DeserializeAuto unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	if errE != ErrNotInSubgroup {
+		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
+	}
+
+	if !point_inE.IsEqual_exact(&sentinel_point) {
+		return false, "failed DeserializeAuto overwrote point"
+	}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "untrusted DeserializeAuto had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "untrusted DeserializeAUto did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with auto, trusted.
+	bufN.Reset()
+	bufA.Reset()
+	// bufE.Reset()
+	point_outN.SerializeLong(&bufN)
+	point_outA.SerializeLong(&bufA)
+	// point_outE.SerializeLong(&bufE)
+
+	_, errN = point_inN.DeserializeAuto(&bufN, UntrustedInput)
+	_, errA = point_inA.DeserializeAuto(&bufA, UntrustedInput)
+	// _, errE = point_inE.DeserializeAuto(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "trusted DeserializeAuto unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	// if errE != ErrNotInSubgroup {
+	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
+	// }
+
+	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	//	return false, "failed DeserializeAuto overwrote point"
+	// }
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "trusted DeserializeAuto had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "trusted DeserializeAUto did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with short, untrusted.
+	bufN.Reset()
+	bufA.Reset()
+	bufE.Reset()
+	point_outN.SerializeShort(&bufN)
+	point_outA.SerializeShort(&bufA)
+	point_outE.SerializeShort(&bufE)
+
+	_, errN = point_inN.DeserializeShort(&bufN, UntrustedInput)
+	_, errA = point_inA.DeserializeShort(&bufA, UntrustedInput)
+	_, errE = point_inE.DeserializeShort(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "untrusted DeserializeShort unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	if errE != ErrXNotInSubgroup {
+		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
+	}
+
+	if !point_inE.IsEqual_exact(&sentinel_point) {
+		return false, "failed DeserializeShort overwrote point"
+	}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "untrusted DeserializeShort had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "untrusted DeserializeShort did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with short, trusted.
+	bufN.Reset()
+	bufA.Reset()
+	// bufE.Reset()
+	point_outN.SerializeShort(&bufN)
+	point_outA.SerializeShort(&bufA)
+	// point_outE.SerializeShort(&bufE)
+
+	_, errN = point_inN.DeserializeShort(&bufN, TrustedInput)
+	_, errA = point_inA.DeserializeShort(&bufA, TrustedInput)
+	// _, errE = point_inE.DeserializeShort(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "trusted DeserializeShort unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	// if errE != ErrNotInSubgroup {
+	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
+	// }
+
+	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	//  	return false, "failed DeserializeShort overwrote point"
+	//}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "trusted DeserializeShort had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "trusted DeserializeShort did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with auto, untrusted.
+	bufN.Reset()
+	bufA.Reset()
+	bufE.Reset()
+	point_outN.SerializeShort(&bufN)
+	point_outA.SerializeShort(&bufA)
+	point_outE.SerializeShort(&bufE)
+
+	_, errN = point_inN.DeserializeAuto(&bufN, UntrustedInput)
+	_, errA = point_inA.DeserializeAuto(&bufA, UntrustedInput)
+	_, errE = point_inE.DeserializeAuto(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "untrusted DeserializeAuto unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	if errE != ErrXNotInSubgroup {
+		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
+	}
+
+	if !point_inE.IsEqual_exact(&sentinel_point) {
+		return false, "failed DeserializeAuto overwrote point"
+	}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "untrusted DeserializeAuto had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "untrusted DeserializeAuto did not result in loss of P vs. P+A information"
+	}
+
+	// repeat with short, trusted.
+	bufN.Reset()
+	bufA.Reset()
+	// bufE.Reset()
+	point_outN.SerializeShort(&bufN)
+	point_outA.SerializeShort(&bufA)
+	// point_outE.SerializeShort(&bufE)
+
+	_, errN = point_inN.DeserializeAuto(&bufN, TrustedInput)
+	_, errA = point_inA.DeserializeAuto(&bufA, TrustedInput)
+	// _, errE = point_inE.DeserializeShort(&bufE, UntrustedInput)
+
+	if (errN != nil) || (errA != nil) {
+		return false, "trusted DeserializeAuto unexpectedly failed" // covered by checkfun_serialization_roundtrip
+	}
+	// if errE != ErrNotInSubgroup {
+	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
+	// }
+
+	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	//  	return false, "failed DeserializeShort overwrote point"
+	//}
+	// Note that we do NOT have IsEqual_exact here.
+	if !point_inA.IsEqual(point_outA) {
+		return false, "trusted DeserializeAuto had Roundtrip error (modulo A)"
+	}
+	if !point_inA.IsEqual_exact(point_inN) {
+		return false, "trusted DeserializeAuto did not result in loss of P vs. P+A information"
+	}
+
+	/*
+		var point_out CurvePointRead = s.Points[0].Clone()
+		var point_in CurvePoint = MakeCurvePointFromType(GetPointType(point_out))
+		var buf bytes.Buffer
+		var err error
+		var bytes_read int
+
+	*/
+	return true, ""
+}
+
 func test_serialization_properties(t *testing.T, receiverType PointType, excludedFlags PointFlags) {
 	point_string := PointTypeToString(receiverType)
 	// var type1, type2 PointType
 	make_samples1_and_run_tests(t, checkfun_NaP_serialization, "Unexpected behaviour when serialializing wrt NaPs or infinite points "+point_string, receiverType, 10, excludedFlags)
 	make_samples1_and_run_tests(t, checkfun_serialization_type_consistency, "Unexpected behaviour when comparing serialization depencency on receiver type "+point_string, receiverType, 10, excludedFlags)
 	make_samples1_and_run_tests(t, checkfun_serialization_roundtrip, "Roundtripping points did not work "+point_string, receiverType, 10, excludedFlags)
+	make_samples1_and_run_tests(t, checkfun_rountrip_modulo2torsion, "Serialization roundtripping dependency on addition of 2-torsion is not as expected "+point_string, receiverType, 10, excludedFlags)
 }
 
 func TestSerializationForXTW(t *testing.T) {

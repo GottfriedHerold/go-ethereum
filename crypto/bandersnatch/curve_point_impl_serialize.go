@@ -7,8 +7,8 @@ import (
 )
 
 // Note: If X/Z is not on the curve, we might get either a "not on curve" or "not in subgroup" error.
-var ErrXNotInSubgroup = errors.New("received affine X coordinate does not correspond to any point in the p253 subgroup of the Bandersnatch curve")
-var ErrXNotOnCurve = errors.New("received affine X coordinate does not correspond to any (finite, rational) point of the Bandersnatch curve")
+var ErrXNotInSubgroup = errors.New("deserialization: received affine X coordinate does not correspond to any point in the p253 subgroup of the Bandersnatch curve")
+var ErrXNotOnCurve = errors.New("deserialization: received affine X coordinate does not correspond to any (finite, rational) point of the Bandersnatch curve")
 var ErrCannotSerializePointAtInfinity = errors.New("serialization: cannot serialize point at infinity")
 var ErrCannotSerializeNaP = errors.New("serialization: cannot serialize NaP")
 
@@ -111,7 +111,7 @@ func (p *Point_axtw) SerializeShort(output io.Writer) (bytes_written int, err er
 
 func (p *Point_axtw) SerializeLong(output io.Writer) (bytes_written int, err error) {
 	if p.IsNaP() {
-		napEncountered("trying to serialize NaP in short format", false, p)
+		napEncountered("trying to serialize NaP in long format", false, p)
 		return 0, ErrCannotSerializeNaP
 	}
 	temp := p.specialSerialzeYCoo_a()
