@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+/*
+	TODO: More tests on failing cases
+*/
+
 func checkfun_NaP_serialization(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	singular := s.Flags[0].CheckFlag(Case_singular)

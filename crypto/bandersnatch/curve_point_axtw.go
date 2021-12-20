@@ -2,7 +2,7 @@ package bandersnatch
 
 // Point_axtw describes points on the p253-subgroup of the Bandersnatch curve in affine extended twisted Edwards coordinates.
 // Extended means that we additionally store T with T = X*Y.
-// a Point_axtw with coos x:y:t corresponds to a Point_xtw with coos x:y:t:1 (i.e. with z==1). Note that on the p253 subgroup, all points have z!=0.
+// a Point_axtw with coos x:y:t corresponds to a Point_xtw with coos x:y:t:1 (i.e. with z==1). Note that on the p253 subgroup, all points have z!=0 (and also y!=0).
 type Point_axtw struct {
 	x FieldElement
 	y FieldElement
@@ -74,7 +74,6 @@ func (p *Point_axtw) IsNeutralElement_exact() bool {
 }
 
 // IsEqual compares two curve points for equality, working modulo the P = P + A identification. The two points do not have the be in the same coordinate format.
-// TODO: Export variants for specific non-interface types to get more type safety?
 func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 	switch other := other.(type) {
 	case *Point_xtw:
@@ -89,7 +88,7 @@ func (p *Point_axtw) IsEqual(other CurvePointRead) bool {
 
 		var temp1, temp2 FieldElement
 		var temp_fe FieldElement = other.Y_projective()
-		// Note: p and other cannot alias due to type, so reasing p is safe between calls to Y_projective and X_projective
+		// Note: p and other cannot alias due to type, so using p is safe between calls to Y_projective and X_projective
 		temp1.Mul(&p.x, &temp_fe)
 		temp_fe = other.X_projective()
 		temp2.Mul(&p.y, &temp_fe)
