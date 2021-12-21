@@ -72,7 +72,7 @@ func (p1 *Point_axtw) is_equal_at(p2 *Point_xtw) bool {
 func (p1 *Point_axtw) is_equal_aa(p2 *Point_axtw) bool {
 	// We check whether x1/y1 == x2/y2. Note that the map Curve -> Field given by x/y is 2:1 with preimages of the form {P, P+A} for the affine 2 torsion point A.
 
-	// Note: Due to z1==z2 == 1, we actually have (x1,y1) == +/- (x2,y2) on equality. We could use this to speed this up.
+	// Note: Due to z1==z2 == 1, we actually have (x1,y1) == +/- (x2,y2) on equality. We could probably use this to speed this up.
 	result, error_code := check_equality_of_quotients(&p1.x, &p1.y, &p2.x, &p2.y)
 	if error_code != 0 {
 		switch error_code {

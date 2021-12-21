@@ -157,8 +157,8 @@ func checkfun_serialization_roundtrip(s TestSample) (bool, string) {
 		return true, "" // Untrusted deserialization is intended to fail for those. We have a separate test for this.
 	}
 
-	var point_out CurvePointRead = s.Points[0].Clone()
-	var point_in CurvePoint = MakeCurvePointFromType(GetPointType(point_out))
+	var point_out CurvePointPtrInterfaceRead = s.Points[0].Clone()
+	var point_in CurvePointPtrInterface = MakeCurvePointPtrInterfaceFromType(GetPointType(point_out))
 	var buf bytes.Buffer
 	var err error
 	var bytes_read int
@@ -294,14 +294,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 	}
 
 	// point_outN, point_outA, point_outE are in different cosets of full curve / p253
-	var point_outN CurvePointRead = s.Points[0].Clone()
+	var point_outN CurvePointPtrInterfaceRead_FullCurve = s.Points[0].Clone().(CurvePointPtrInterfaceRead_FullCurve)
 	pointType := GetPointType(point_outN)
-	var point_outA CurvePoint = MakeCurvePointFromType(pointType)
-	var point_outE CurvePoint = MakeCurvePointFromType(pointType)
+	point_outA := MakeCurvePointPtrInterfaceFromType(pointType)
+	point_outE := MakeCurvePointPtrInterfaceFromType(pointType)
 
-	var point_inN CurvePoint = MakeCurvePointFromType(pointType)
-	var point_inA CurvePoint = MakeCurvePointFromType(pointType)
-	var point_inE CurvePoint = MakeCurvePointFromType(pointType)
+	point_inN := MakeCurvePointPtrInterfaceFromType(pointType)
+	point_inA := MakeCurvePointPtrInterfaceFromType(pointType)
+	point_inE := MakeCurvePointPtrInterfaceFromType(pointType)
 
 	// serves as a sentinel value to check whether the value was overwritten (on Deserialization failure, it should not be)
 	var sentinel_point Point_xtw
@@ -351,14 +351,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeLong"
 	}
 
-	if !point_inE.IsEqual_exact(&sentinel_point) {
+	if !point_inE.IsEqual_FullCurve(&sentinel_point) {
 		return false, "failed DeserializeLong overwrote point"
 	}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "untrusted DeserializeLong had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "untrusted DeserializeLong did not result in loss of P vs. P+A information"
 	}
 
@@ -381,11 +381,11 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 	// 	return false, "Did not get Not-In-Subgroup error upon trusted DeserializeLong"
 	//}
 
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "Trusted DeserializeLong had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "trusted DeserializeLong did not result in loss of P vs. P+A information"
 	}
 
@@ -408,14 +408,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
 	}
 
-	if !point_inE.IsEqual_exact(&sentinel_point) {
+	if !point_inE.IsEqual_FullCurve(&sentinel_point) {
 		return false, "failed DeserializeAuto overwrote point"
 	}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "untrusted DeserializeAuto had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "untrusted DeserializeAUto did not result in loss of P vs. P+A information"
 	}
 
@@ -438,14 +438,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
 	// }
 
-	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	// if !point_inE.IsEqual_FullCurve(&example_generator_xtw) {
 	//	return false, "failed DeserializeAuto overwrote point"
 	// }
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "trusted DeserializeAuto had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "trusted DeserializeAUto did not result in loss of P vs. P+A information"
 	}
 
@@ -468,14 +468,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
 	}
 
-	if !point_inE.IsEqual_exact(&sentinel_point) {
+	if !point_inE.IsEqual_FullCurve(&sentinel_point) {
 		return false, "failed DeserializeShort overwrote point"
 	}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "untrusted DeserializeShort had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "untrusted DeserializeShort did not result in loss of P vs. P+A information"
 	}
 
@@ -498,14 +498,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
 	// }
 
-	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	// if !point_inE.IsEqual_FullCurve(&example_generator_xtw) {
 	//  	return false, "failed DeserializeShort overwrote point"
 	//}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "trusted DeserializeShort had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "trusted DeserializeShort did not result in loss of P vs. P+A information"
 	}
 
@@ -528,14 +528,14 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 		return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeAuto"
 	}
 
-	if !point_inE.IsEqual_exact(&sentinel_point) {
+	if !point_inE.IsEqual_FullCurve(&sentinel_point) {
 		return false, "failed DeserializeAuto overwrote point"
 	}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "untrusted DeserializeAuto had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "untrusted DeserializeAuto did not result in loss of P vs. P+A information"
 	}
 
@@ -558,20 +558,20 @@ func checkfun_rountrip_modulo2torsion(s TestSample) (bool, string) {
 	// 	return false, "Did not get Not-In-Subgroup error upon untrusted DeserializeShort"
 	// }
 
-	// if !point_inE.IsEqual_exact(&example_generator_xtw) {
+	// if !point_inE.IsEqual_FullCurve(&example_generator_xtw) {
 	//  	return false, "failed DeserializeShort overwrote point"
 	//}
-	// Note that we do NOT have IsEqual_exact here.
+	// Note that we do NOT have IsEqual_FullCurve here.
 	if !point_inA.IsEqual(point_outA) {
 		return false, "trusted DeserializeAuto had Roundtrip error (modulo A)"
 	}
-	if !point_inA.IsEqual_exact(point_inN) {
+	if !point_inA.IsEqual_FullCurve(point_inN) {
 		return false, "trusted DeserializeAuto did not result in loss of P vs. P+A information"
 	}
 
 	/*
-		var point_out CurvePointRead = s.Points[0].Clone()
-		var point_in CurvePoint = MakeCurvePointFromType(GetPointType(point_out))
+		var point_out CurvePointPtrInterfaceRead = s.Points[0].Clone()
+		var point_in CurvePointPtrInterface = MakeCurvePointPtrInterfaceFromType(GetPointType(point_out))
 		var buf bytes.Buffer
 		var err error
 		var bytes_read int

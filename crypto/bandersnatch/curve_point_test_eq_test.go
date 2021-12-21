@@ -16,8 +16,8 @@ func checkfun_AddEq(s TestSample) (bool, string) {
 
 	receiverType := GetPointType(s.Points[0])
 
-	result1 := s.Points[0].Clone().(CurvePoint)
-	result2 := MakeCurvePointFromType(receiverType)
+	result1 := s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
+	result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 	if !canRepresentInfinity(receiverType) {
 		var temp Point_xtw
@@ -47,7 +47,7 @@ func checkfun_AddEq(s TestSample) (bool, string) {
 			return false, "Addition did not result in NaP, even though one the arguements was a NaP"
 		}
 	}
-	return guardForInvalidPoints(expected, expected_error, "AddEq did not match result of Add", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, expected_error, "AddEq did not match result of Add", result1.IsEqual_FullCurve, result2)
 }
 
 func checkfun_SubEq(s TestSample) (bool, string) {
@@ -58,8 +58,8 @@ func checkfun_SubEq(s TestSample) (bool, string) {
 
 	receiverType := GetPointType(s.Points[0])
 
-	result1 := s.Points[0].Clone().(CurvePoint)
-	result2 := MakeCurvePointFromType(receiverType)
+	result1 := s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
+	result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 	if !canRepresentInfinity(receiverType) {
 		var temp Point_xtw
@@ -89,15 +89,15 @@ func checkfun_SubEq(s TestSample) (bool, string) {
 			return false, "Addition did not result in NaP, even though one the arguements was a NaP"
 		}
 	}
-	return guardForInvalidPoints(expected, expected_error, "AddEq did not match result of Add", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, expected_error, "AddEq did not match result of Add", result1.IsEqual_FullCurve, result2)
 }
 
 func checkfun_DoubleEq(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	singular := s.AnyFlags().CheckFlag(Case_singular)
 	receiverType := GetPointType(s.Points[0])
-	result1 := s.Points[0].Clone().(CurvePoint)
-	result2 := MakeCurvePointFromType(receiverType)
+	result1 := s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
+	result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 	result1.DoubleEq()
 	result2.Double(s.Points[0])
@@ -107,15 +107,15 @@ func checkfun_DoubleEq(s TestSample) (bool, string) {
 	}
 
 	expected := !singular
-	return guardForInvalidPoints(expected, singular, "Double and DoubleEq do not match", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, singular, "Double and DoubleEq do not match", result1.IsEqual_FullCurve, result2)
 }
 
 func checkfun_NegEq(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	singular := s.AnyFlags().CheckFlag(Case_singular)
 	receiverType := GetPointType(s.Points[0])
-	result1 := s.Points[0].Clone().(CurvePoint)
-	result2 := MakeCurvePointFromType(receiverType)
+	result1 := s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
+	result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 	result1.NegEq()
 	result2.Neg(s.Points[0])
@@ -125,7 +125,7 @@ func checkfun_NegEq(s TestSample) (bool, string) {
 	}
 
 	expected := !singular
-	return guardForInvalidPoints(expected, singular, "Neg and NegEq do not match", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, singular, "Neg and NegEq do not match", result1.IsEqual_FullCurve, result2)
 }
 
 func checkfun_EndoEq(s TestSample) (bool, string) {
@@ -133,18 +133,18 @@ func checkfun_EndoEq(s TestSample) (bool, string) {
 	singular := s.AnyFlags().CheckFlag(Case_singular)
 	infinite := s.AnyFlags().CheckFlag(Case_infinite)
 	receiverType := GetPointType(s.Points[0])
-	result1 := s.Points[0].Clone().(CurvePoint)
-	result2 := MakeCurvePointFromType(receiverType)
+	result1 := s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
+	result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 	result1.EndoEq()
 	result2.Endo(s.Points[0])
 
 	// Endo may fail at points at infinity. We know that the correct answer is A, so we just check for that directly.
 	if infinite {
-		if !result1.IsNaP() && !result1.IsEqual_exact(&orderTwoPoint_xtw) {
+		if !result1.IsNaP() && !result1.IsEqual_FullCurve(&orderTwoPoint_xtw) {
 			return false, "EndoEq on infinite point gave wrong result"
 		}
-		if !result2.IsNaP() && !result2.IsEqual_exact(&orderTwoPoint_xtw) {
+		if !result2.IsNaP() && !result2.IsEqual_FullCurve(&orderTwoPoint_xtw) {
 			return false, "Endo on infinite point gave wrong result"
 		}
 		return true, ""
@@ -156,10 +156,10 @@ func checkfun_EndoEq(s TestSample) (bool, string) {
 
 	expected := !singular
 
-	return guardForInvalidPoints(expected, singular, "Double and DoubleEq do not match", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, singular, "Double and DoubleEq do not match", result1.IsEqual_FullCurve, result2)
 }
 
-func test_CurvePoint_EqVariants(t *testing.T, receiverType PointType, excludedFlags PointFlags) {
+func test_CurvePointPtrInterface_EqVariants(t *testing.T, receiverType PointType, excludedFlags PointFlags) {
 	point_string := PointTypeToString(receiverType)
 	make_samples2_and_run_tests(t, checkfun_AddEq, "AddEq did not behave as expected "+point_string, receiverType, receiverType, 10, excludedFlags)
 	make_samples2_and_run_tests(t, checkfun_SubEq, "SubEq did not behave as expected "+point_string, receiverType, receiverType, 10, excludedFlags)
@@ -176,13 +176,13 @@ func test_CurvePoint_EqVariants(t *testing.T, receiverType PointType, excludedFl
 }
 
 func TestEqVariantsForXTW(t *testing.T) {
-	test_CurvePoint_EqVariants(t, pointTypeXTW, 0)
+	test_CurvePointPtrInterface_EqVariants(t, pointTypeXTW, 0)
 }
 
 func TestEqVariantsForAXTW(t *testing.T) {
-	test_CurvePoint_EqVariants(t, pointTypeAXTW, 0)
+	test_CurvePointPtrInterface_EqVariants(t, pointTypeAXTW, 0)
 }
 
 func TestEqVariantsForEFGH(t *testing.T) {
-	test_CurvePoint_EqVariants(t, pointTypeEFGH, 0)
+	test_CurvePointPtrInterface_EqVariants(t, pointTypeEFGH, 0)
 }

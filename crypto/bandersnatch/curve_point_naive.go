@@ -80,6 +80,7 @@ func makeRandomPointOnCurve_t(rnd *rand.Rand) Point_xtw {
 // Creates a random point on the correct subgroup
 func makeRandomPointInSubgroup_t(rnd *rand.Rand) Point_xtw {
 	r := makeRandomPointOnCurve_t(rnd)
-	r.clearCofactor2()
+	// r.clearCofactor2()
+	r.DoubleEq()
 	return r
 }

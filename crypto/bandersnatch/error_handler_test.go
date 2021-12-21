@@ -11,13 +11,16 @@ func call_error() {
 	napEncountered("dummy error for error testing", false, &p)
 }
 
+var _ NaPErrorHandler = trivial_error_handler
+var _ NaPErrorHandler = panic_error_handler
+
 func TestErrorHandling(t *testing.T) {
 	f := GetNaPErrorHandler()
 	if f("", false) != false {
 		t.Fatal("Predefined error handler does not return false")
 	}
 	var x int = 2
-	new_handler := func(string, bool, ...CurvePointRead) bool {
+	new_handler := func(string, bool, ...CurvePointPtrInterfaceRead) bool {
 		x += 3
 		return false
 	}

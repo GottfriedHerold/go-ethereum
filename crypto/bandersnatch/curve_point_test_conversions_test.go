@@ -20,7 +20,7 @@ func checkfun_conversion_to_affine(s TestSample) (ok bool, error_reason string) 
 		return affine_point.IsNaP(), "conversion to affine of ininite point neither panics nor results in NaP"
 	}
 	affine_point = s.Points[0].AffineExtended()
-	return affine_point.IsEqual_exact(s.Points[0]), "conversion to affine point does not equal the original"
+	return affine_point.IsEqual_FullCurve(s.Points[0]), "conversion to affine point does not equal the original"
 }
 
 // checks whether ExtendedTwistedEdwards gives a point that is considered equal to the original
@@ -33,7 +33,7 @@ func checkfun_conversion_to_xtw(s TestSample) (bool, string) {
 		return point_xtw.IsNaP(), "conversion of NaP to xtw point did not result in NaP"
 	}
 	point_xtw = s.Points[0].ExtendedTwistedEdwards()
-	return point_xtw.IsEqual_exact(s.Points[0]), "conversion to xtw did not result in point that was considered equal"
+	return point_xtw.IsEqual_FullCurve(s.Points[0]), "conversion to xtw did not result in point that was considered equal"
 }
 
 // checks whether Clone() gives a point that is considered equal to the original.
@@ -41,26 +41,26 @@ func checkfun_clone(s TestSample) (ok bool, err string) {
 	s.AssertNumberOfPoints(1)
 	var singular bool = s.Flags[0].CheckFlag(Case_singular)
 
-	var point_copy CurvePoint = s.Points[0].Clone().(CurvePoint)
+	var point_copy CurvePointPtrInterface_FullCurve = s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
 
 	if singular != point_copy.IsNaP() {
 		return false, "cloning did not result in the same NaP status as the original"
 	}
 
 	if singular {
-		ok, err = guardForInvalidPoints(false, true, "error when comparing clone of NaP to original", point_copy.IsEqual_exact, s.Points[0])
+		ok, err = guardForInvalidPoints(false, true, "error when comparing clone of NaP to original", point_copy.IsEqual_FullCurve, s.Points[0])
 	} else {
-		ok, err = guardForInvalidPoints(true, false, "error when comparing clone of non-NaP to original", point_copy.IsEqual_exact, s.Points[0])
+		ok, err = guardForInvalidPoints(true, false, "error when comparing clone of non-NaP to original", point_copy.IsEqual_FullCurve, s.Points[0])
 	}
 	if !ok {
 		return
 	}
 
-	// modify point_copy and try again to make sure clone is not tied to the original (Note that CurvePoint's concrete values are pointers)
+	// modify point_copy and try again to make sure clone is not tied to the original (Note that CurvePointPtrInterface's concrete values are pointers)
 	point_copy.AddEq(&example_generator_xtw) // shouldn't change NaP - status as example_generator + E1 is not among our sample set.
 	expected := false
 
-	return guardForInvalidPoints(expected, singular, "Clone of point was equal, even after copy was modified", point_copy.IsEqual_exact, s.Points[0])
+	return guardForInvalidPoints(expected, singular, "Clone of point was equal, even after copy was modified", point_copy.IsEqual_FullCurve, s.Points[0])
 }
 
 // checks whether projective coo functions work as expected
@@ -93,7 +93,7 @@ func checkfun_projective_coordinate_queries(s TestSample) (bool, string) {
 	var singular bool = s.AnyFlags().CheckFlag(Case_singular)
 	var expected bool = !singular
 
-	return guardForInvalidPoints(expected, singular, "Reconstruction of point via <foo>_projective coos failed", point_copy.IsEqual_exact, s.Points[0])
+	return guardForInvalidPoints(expected, singular, "Reconstruction of point via <foo>_projective coos failed", point_copy.IsEqual_FullCurve, s.Points[0])
 }
 
 // checks whether affine coo function work as expected
@@ -117,7 +117,7 @@ func checkfun_affine_coordinate_queries(s TestSample) (ok bool, err string) {
 	var point_copy Point_axtw = Point_axtw{x: X, y: Y, t: T}
 	var singular bool = s.AnyFlags().CheckFlag(Case_singular)
 	var expected bool = !singular
-	return guardForInvalidPoints(expected, singular, "Reconstruction of point via <foo>_projective coos failed", point_copy.IsEqual_exact, s.Points[0])
+	return guardForInvalidPoints(expected, singular, "Reconstruction of point via <foo>_projective coos failed", point_copy.IsEqual_FullCurve, s.Points[0])
 }
 
 func test_conversion_properties(t *testing.T, receiverType PointType, excludedFlags PointFlags) {

@@ -17,10 +17,10 @@ func (out *Point_xtw) double_ta(input *Point_axtw) {
 	out.add_taa(input, input)
 }
 
-func default_Double(receiver CurvePointWrite, input CurvePointRead) {
+func default_Double(receiver CurvePointPtrInterfaceWrite, input CurvePointPtrInterfaceRead) {
 	receiver.Add(input, input)
 }
 
-func default_DoubleEq(receiver CurvePoint) {
+func default_DoubleEq(receiver CurvePointPtrInterface) {
 	receiver.Double(receiver)
 }

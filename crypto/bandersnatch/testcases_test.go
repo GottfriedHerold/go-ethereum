@@ -62,7 +62,7 @@ func canRepresentInfinity(pointType PointType) bool {
 	}
 }
 
-func GetPointType(p CurvePointRead) PointType {
+func GetPointType(p CurvePointPtrInterfaceRead) PointType {
 	// Could do a return PointType(reflect.TypeOf(p)), but we need to check that it is from a given list anyway.
 	switch p.(type) {
 	case *Point_xtw:
@@ -76,12 +76,12 @@ func GetPointType(p CurvePointRead) PointType {
 	}
 }
 
-func MakeCurvePointFromType(pointType PointType) CurvePoint {
-	return reflect.New(pointType.Elem()).Interface().(CurvePoint)
+func MakeCurvePointPtrInterfaceFromType(pointType PointType) CurvePointPtrInterface_FullCurve {
+	return reflect.New(pointType.Elem()).Interface().(CurvePointPtrInterface_FullCurve)
 }
 
 type TestSample struct {
-	Points  []CurvePointRead // TODO: CurvePointDebug interface?
+	Points  []CurvePointPtrInterfaceRead_FullCurve // TODO: CurvePointPtrInterfaceDebug interface?
 	Flags   []PointFlags
 	Comment string
 	Len     uint
@@ -97,10 +97,10 @@ func (s *TestSample) Clone() (ret TestSample) {
 	ret.Len = s.Len
 	ret.Comment = s.Comment
 	ret.Flags = make([]PointFlags, ret.Len)
-	ret.Points = make([]CurvePointRead, ret.Len)
+	ret.Points = make([]CurvePointPtrInterfaceRead_FullCurve, ret.Len)
 	for i := 0; i < int(ret.Len); i++ {
 		ret.Flags[i] = s.Flags[i]
-		ret.Points[i] = s.Points[i].Clone()
+		ret.Points[i] = s.Points[i].Clone().(CurvePointPtrInterfaceRead_FullCurve)
 	}
 	return
 }
@@ -112,8 +112,8 @@ func (s TestSample) AnyFlags() (ret PointFlags) {
 	return
 }
 
-func MakeSample1(p CurvePointRead, flags PointFlags, comment string) (ret TestSample) {
-	ret.Points = []CurvePointRead{p}
+func MakeSample1(p CurvePointPtrInterfaceRead_FullCurve, flags PointFlags, comment string) (ret TestSample) {
+	ret.Points = []CurvePointPtrInterfaceRead_FullCurve{p}
 	ret.Flags = []PointFlags{flags}
 	ret.Len = 1
 	ret.Comment = comment
@@ -124,12 +124,12 @@ func MakeSample1(p CurvePointRead, flags PointFlags, comment string) (ret TestSa
 func ZipSample(a, b TestSample, extra_flags PointFlags) (ret TestSample) {
 	ret.Flags = append([]PointFlags{}, a.Flags...)
 	ret.Flags = append(ret.Flags, b.Flags...)
-	ret.Points = make([]CurvePointRead, 0, a.Len+b.Len)
+	ret.Points = make([]CurvePointPtrInterfaceRead_FullCurve, 0, a.Len+b.Len)
 	for _, point := range a.Points {
-		ret.Points = append(ret.Points, point.Clone())
+		ret.Points = append(ret.Points, point.Clone().(CurvePointPtrInterfaceRead_FullCurve))
 	}
 	for _, point := range b.Points {
-		ret.Points = append(ret.Points, point.Clone())
+		ret.Points = append(ret.Points, point.Clone().(CurvePointPtrInterfaceRead_FullCurve))
 	}
 	ret.Comment = a.Comment + ", " + b.Comment
 	ret.Len = a.Len + b.Len
@@ -180,13 +180,13 @@ func (in *TestSample) CopyXTWToType(new_type []PointType) (ret TestSample) {
 			if GetPointType(in.Points[i]) != new_type[i] {
 				panic("Cannot convert sample")
 			}
-			ret.Points = append(ret.Points, in.Points[i].Clone())
+			ret.Points = append(ret.Points, in.Points[i].Clone().(CurvePointPtrInterfaceRead_FullCurve))
 			ret.Flags = append(ret.Flags, in.Flags[i])
 			continue
 		}
 		switch new_type[i] {
 		case pointTypeXTW:
-			ret.Points = append(ret.Points, in.Points[i].Clone())
+			ret.Points = append(ret.Points, in.Points[i].Clone().(CurvePointPtrInterfaceRead_FullCurve))
 			ret.Flags = append(ret.Flags, in.Flags[i])
 		case pointTypeAXTW:
 			if in.Flags[i]&Case_infinite != 0 || in.Flags[i]&Case_singular != 0 {
@@ -309,7 +309,7 @@ func make_random_test_sample_xtw(rnd *rand.Rand, subgroup bool) TestSample {
 	var comment string
 	// s.Flags = PointFlags(Case_random)
 	if subgroup {
-		r.clearCofactor2()
+		r.DoubleEq() // clear cofactor
 		if rnd.Intn(2) == 0 {
 			r.AddEq(&orderTwoPoint_xtw)
 			flags |= PointFlags(Case_outside_p253)
@@ -460,7 +460,7 @@ func MakeTestSamples2(random_size int, point_type1 PointType, point_type2 PointT
 	s2.Comment = s1.Comment + ", differs by E1"
 	s2.Flags = make([]PointFlags, 1)
 	s2.Flags[0] = s1.Flags[0] | Case_outside_goodgroup
-	s2.Points = make([]CurvePointRead, 1)
+	s2.Points = make([]CurvePointPtrInterfaceRead_FullCurve, 1)
 
 	var p2 Point_xtw
 	p2.Add(s1.Points[0], &exceptionalPoint_1_xtw) // We might consider writing down the coos directly

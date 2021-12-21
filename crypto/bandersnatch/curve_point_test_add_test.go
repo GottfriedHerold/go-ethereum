@@ -10,8 +10,8 @@ func make_checkfun_addition_commutes(receiverType PointType) (returned_function 
 	returned_function = func(s TestSample) (bool, string) {
 		s.AssertNumberOfPoints(2)
 		var singular bool = s.AnyFlags().CheckFlag(Case_singular)
-		var result1 CurvePoint = MakeCurvePointFromType(receiverType)
-		var result2 CurvePoint = MakeCurvePointFromType(receiverType)
+		result1 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 		result1.Add(s.Points[0], s.Points[1])
 		result2.Add(s.Points[1], s.Points[0])
 
@@ -20,7 +20,7 @@ func make_checkfun_addition_commutes(receiverType PointType) (returned_function 
 		if wasInvalidPointEncountered(func() { got1 = result1.IsEqual(result2) }) != singular {
 			return false, "comparison of P+Q =? Q+P with NaPs involved did not trigger error handler"
 		}
-		if wasInvalidPointEncountered(func() { got2 = result1.IsEqual_exact(result2) }) != singular {
+		if wasInvalidPointEncountered(func() { got2 = result1.IsEqual_FullCurve(result2) }) != singular {
 			return false, "exact Comparison of P+Q =? Q+P with NaPs involved did not trigger error handler"
 		}
 		return expected == got1 && expected == got2, "Curve point addition not commutative"
@@ -30,21 +30,21 @@ func make_checkfun_addition_commutes(receiverType PointType) (returned_function 
 
 // ensure that P + neutral element == P for P finite curve point (for infinite P, the addition law does not work for P + neutral element)
 func make_checkfun_addition_of_zero(receiverType PointType, zeroType PointType) (returned_function checkfunction) {
-	var zero CurvePoint = MakeCurvePointFromType(zeroType)
+	var zero CurvePointPtrInterface = MakeCurvePointPtrInterfaceFromType(zeroType)
 	zero.SetNeutral()
 	returned_function = func(s TestSample) (bool, string) {
 		var singular bool = s.AnyFlags().CheckFlag(Case_singular)
 		if s.AnyFlags().CheckFlag(Case_infinite) {
 			return true, "" // This case is skipped.
 		}
-		var result CurvePoint = MakeCurvePointFromType(receiverType)
+		result := MakeCurvePointPtrInterfaceFromType(receiverType)
 		result.Add(s.Points[0], zero)
 		var expected, got1, got2 bool
 		expected = !singular
 		if wasInvalidPointEncountered(func() { got1 = result.IsEqual(s.Points[0]) }) != singular {
 			return false, "comparison of P + neutral element =? P with NaP P did not trigger error handler"
 		}
-		if wasInvalidPointEncountered(func() { got2 = result.IsEqual_exact(s.Points[0]) }) != singular {
+		if wasInvalidPointEncountered(func() { got2 = result.IsEqual_FullCurve(s.Points[0]) }) != singular {
 			return false, "exact omparison of P + neutral element =? P with NaP P did not trigger error handler"
 		}
 		return expected == got1 && expected == got2, "P + 0 != P"
@@ -57,8 +57,8 @@ func make_checkfun_negative(receiverType PointType) (returned_function checkfunc
 	returned_function = func(s TestSample) (bool, string) {
 		s.AssertNumberOfPoints(1)
 		var singular bool = s.AnyFlags().CheckFlag(Case_singular)
-		var negative_of_point CurvePoint = MakeCurvePointFromType(receiverType)
-		var sum CurvePoint = MakeCurvePointFromType(receiverType)
+		negative_of_point := MakeCurvePointPtrInterfaceFromType(receiverType)
+		sum := MakeCurvePointPtrInterfaceFromType(receiverType)
 		negative_of_point.Neg(s.Points[0])
 		if singular != negative_of_point.IsNaP() {
 			return false, "Taking negative of NaP did not result in same NaP status. Was expecting " + strconv.FormatBool(singular) + " but got " + strconv.FormatBool(negative_of_point.IsNaP())
@@ -66,7 +66,7 @@ func make_checkfun_negative(receiverType PointType) (returned_function checkfunc
 		sum.Add(s.Points[0], negative_of_point)
 		expected := !singular
 		var got bool
-		if wasInvalidPointEncountered(func() { got = sum.IsNeutralElement_exact() }) != singular {
+		if wasInvalidPointEncountered(func() { got = sum.IsNeutralElement_FullCurve() }) != singular {
 			return false, "comparing P + (-P) =? neutral with P NaP did not trigger error handler"
 		}
 		return expected == got, "P + (-P) != neutral"
@@ -86,16 +86,16 @@ func make_checkfun_subtraction(receiverType PointType) (returned_function checkf
 		}
 
 		var singular bool = s.AnyFlags().CheckFlag(Case_singular)
-		var result_of_subtraction CurvePoint = MakeCurvePointFromType(receiverType)
-		var negative_of_point CurvePoint = MakeCurvePointFromType(receiverType)
-		var result1 CurvePoint = MakeCurvePointFromType(receiverType)
-		var result2 CurvePoint = MakeCurvePointFromType(receiverType)
+		result_of_subtraction := MakeCurvePointPtrInterfaceFromType(receiverType)
+		negative_of_point := MakeCurvePointPtrInterfaceFromType(receiverType)
+		result1 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 
 		result_of_subtraction.Sub(s.Points[0], s.Points[1])
 		result1.Add(result_of_subtraction, s.Points[1])
 		var got bool
 		var expected bool = !singular
-		if wasInvalidPointEncountered(func() { got = result1.IsEqual_exact(s.Points[0]) }) != singular {
+		if wasInvalidPointEncountered(func() { got = result1.IsEqual_FullCurve(s.Points[0]) }) != singular {
 			return false, "Wrong NaP behaviour when checking (P-Q) + Q ?= P"
 		}
 		if got != expected {
@@ -105,7 +105,7 @@ func make_checkfun_subtraction(receiverType PointType) (returned_function checkf
 		// Check that P - Q == P + (-Q)
 		negative_of_point.Neg(s.Points[1])
 		result2.Add(s.Points[0], negative_of_point)
-		if wasInvalidPointEncountered(func() { got = result2.IsEqual_exact(result_of_subtraction) }) != singular {
+		if wasInvalidPointEncountered(func() { got = result2.IsEqual_FullCurve(result_of_subtraction) }) != singular {
 			return false, "Wrong NaP behaviour when checking P - Q ?= P + (-Q)"
 		}
 		if got != expected {
@@ -121,7 +121,7 @@ func make_checkfun_doubling(receiverType PointType) checkfunction {
 	return func(s TestSample) (bool, string) {
 		s.AssertNumberOfPoints(1)
 		singular := s.AnyFlags().CheckFlag(Case_singular)
-		var result1 CurvePoint = MakeCurvePointFromType(receiverType)
+		result1 := MakeCurvePointPtrInterfaceFromType(receiverType)
 		result1.Double(s.Points[0])
 		if result1.IsNaP() != singular {
 			return false, "Point doubling resulted in different NaP status"
@@ -129,9 +129,9 @@ func make_checkfun_doubling(receiverType PointType) checkfunction {
 		if singular {
 			return true, ""
 		}
-		var result2 CurvePoint = MakeCurvePointFromType(receiverType)
+		result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
 		result2.Add(s.Points[0], s.Points[0])
-		if !result1.IsEqual_exact(result2) {
+		if !result1.IsEqual_FullCurve(result2) {
 			return false, "Point doubling differs from computing P + P"
 		}
 		return true, ""
@@ -144,8 +144,8 @@ func make_checkfun_doubling(receiverType PointType) checkfunction {
 func checkfun_associative_law(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(3)
 	var singular bool = s.AnyFlags().CheckFlag(Case_singular)
-	var result1 CurvePoint = MakeCurvePointFromType(GetPointType(s.Points[0]))
-	var result2 CurvePoint = MakeCurvePointFromType(GetPointType(s.Points[0]))
+	result1 := MakeCurvePointPtrInterfaceFromType(GetPointType(s.Points[0]))
+	result2 := MakeCurvePointPtrInterfaceFromType(GetPointType(s.Points[0]))
 
 	result1.Add(s.Points[0], s.Points[1])
 	result1.Add(result1, s.Points[2])
@@ -153,7 +153,7 @@ func checkfun_associative_law(s TestSample) (bool, string) {
 	result2.Add(s.Points[0], result2)
 
 	var expected bool = !singular
-	return guardForInvalidPoints(expected, singular, "Test for associative law failed", result1.IsEqual_exact, result2)
+	return guardForInvalidPoints(expected, singular, "Test for associative law failed", result1.IsEqual_FullCurve, result2)
 }
 
 func test_addition_properties(t *testing.T, receiverType PointType, excludedFlags PointFlags) {

@@ -6,7 +6,7 @@ import (
 )
 
 /*
-	This file contains tests on curve points that can be expressed properties on the exported interface of CurvePoint.
+	This file contains tests on curve points that can be expressed properties on the exported interface of CurvePointPtrInterface.
 	Using our testing framework and a little bit of reflection (hidden in helper functions) and interfaces, these tests are then run on all concrete curve point types.
 */
 
@@ -30,17 +30,23 @@ func TestGlobalParameter(t *testing.T) {
 // Ensures that types satisfy the intended interfaces.
 // Note that the package will not compile anyway if these are not satisfied.
 func TestInterfaces(t *testing.T) {
-	var _ CurvePointRead = &Point_xtw{}
-	var _ CurvePointWrite = &Point_xtw{}
-	var _ CurvePointRead = &Point_axtw{}
-	var _ CurvePointWrite = &Point_axtw{}
-	var _ CurvePointRead = &Point_efgh{}
-	var _ CurvePointWrite = &Point_efgh{}
+	var _ CurvePointPtrInterfaceRead = &Point_xtw{}
+	var _ CurvePointPtrInterfaceWrite = &Point_xtw{}
+
+	var _ CurvePointPtrInterfaceRead = &Point_axtw{}
+	var _ CurvePointPtrInterfaceWrite = &Point_axtw{}
+
+	var _ CurvePointPtrInterfaceRead = &Point_efgh{}
+	var _ CurvePointPtrInterfaceWrite = &Point_efgh{}
+
+	var _ CurvePointPtrInterface_FullCurve = &Point_xtw{}
+	var _ CurvePointPtrInterface_FullCurve = &Point_axtw{}
+	var _ CurvePointPtrInterface_FullCurve = &Point_efgh{}
 }
 
 /*
 	checkfun_<foo> are functions of type checkfun (i.e. func(TestSample)(bool, string))
-	They are to be run on TestSamples containing a Tuple of CurvePoints and Flags and return true, <ignored> on success
+	They are to be run on TestSamples containing a Tuple of CurvePointPtrInterfaces and Flags and return true, <ignored> on success
 	and false, optional_error_reason on failure.
 
 	Be aware that our checkfunction also verify the intended behaviour at NaP's (even though we might not guarantee it)

@@ -10,12 +10,12 @@ func checkfun_recognize_neutral(s TestSample) (bool, string) {
 	return guardForInvalidPoints(expected, singular, "Neutral point not recognized", s.Points[0].IsNeutralElement)
 }
 
-// checks whether IsNeutralElement_exact correctly recognizes neutral elements
+// checks whether IsNeutralElement_FullCurve correctly recognizes neutral elements
 func checkfun_recognize_neutral_exact(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(1)
 	var singular = s.AnyFlags().CheckFlag(Case_singular)
 	var expected bool = s.Flags[0].CheckFlag(Case_zero_exact) && !singular
-	return guardForInvalidPoints(expected, singular, "exact testing for neutral element did not work.", s.Points[0].IsNeutralElement_exact)
+	return guardForInvalidPoints(expected, singular, "exact testing for neutral element did not work.", s.Points[0].IsNeutralElement_FullCurve)
 }
 
 // checks whether IsEqual correctly recognizes pairs of equal points (modulo P = P+A)
@@ -26,12 +26,12 @@ func checkfun_recognize_equality(s TestSample) (bool, string) {
 	return guardForInvalidPoints(expected, singular, "equality testing failed", s.Points[0].IsEqual, s.Points[1])
 }
 
-// checks whether IsEqual_exact correctly recognizes pairs of exactly equal points.
+// checks whether IsEqual_FullCurve correctly recognizes pairs of exactly equal points.
 func checkfun_recognize_equality_exact(s TestSample) (bool, string) {
 	s.AssertNumberOfPoints(2)
 	var singular bool = s.AnyFlags().CheckFlag(Case_singular)
 	var expected bool = s.AnyFlags().CheckFlag(Case_equal_exact) && !singular
-	return guardForInvalidPoints(expected, singular, "equality testing failed", s.Points[0].IsEqual_exact, s.Points[1])
+	return guardForInvalidPoints(expected, singular, "equality testing failed", s.Points[0].IsEqual_FullCurve, s.Points[1])
 }
 
 func test_equality_properties(t *testing.T, receiverType PointType, excludedFlags PointFlags) {
