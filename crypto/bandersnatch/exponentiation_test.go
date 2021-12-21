@@ -10,7 +10,7 @@ func TestSimpleExponentiation(t *testing.T) {
 	const iterations = 10
 	var temp1, temp2, temp3, temp4 Point_xtw
 	temp1.exp_naive_xx(&example_generator_xtw, GroupOrder_Int)
-	if !temp1.IsNeutralElement_exact() {
+	if !temp1.IsNeutralElement_FullCurve() {
 		t.Fatal("Either naive exponentiation is wrong or example point not in subgroup")
 	}
 	var drng *rand.Rand = rand.New(rand.NewSource(1024))
@@ -71,7 +71,7 @@ func TestQuotientGroup(t *testing.T) {
 		if temp.IsNaP() {
 			t.Fatal("p253 * random point resulted in singularity")
 		}
-		if temp.IsNeutralElement_exact() {
+		if temp.IsNeutralElement_FullCurve() {
 			isN = 1
 			NumN++
 			if !LegCheck {

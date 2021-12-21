@@ -618,12 +618,14 @@ type prefixBits = byte // must be the same as above, but as alias
 
 const maxprefixlength = 8
 
-var ErrPrefixDoesNotFit error = errors.New("while trying to serialize a field element with a prefix, the prefix did not fit, because the number was too large")
-var ErrPrefixLengthInvalid error = errors.New("in FieldElement (de)serializitation, an invalid prefix length > 8 was requested")
-var ErrPrefixLengthInvalid2 error = errors.New("in FieldElement (de)serialization, the requested prefix has bits in positions that are not allowed by prefix length")
-var ErrInvalidByteOrder error = errors.New("unrecognized byte order in FieldElement (de)serialization. You must use either LittleEndian or BigEndian from the encoding/binary standard library")
-var ErrPrefixMismatch error = errors.New("during deserialization, the read prefix did not match the expected one")
-var ErrNonNormalizedDeserialization = errors.New("during deserialization, the read number was not the minimal representative modulo BaseFieldSize")
+var (
+	ErrPrefixDoesNotFit             error = errors.New("while trying to serialize a field element with a prefix, the prefix did not fit, because the number was too large")
+	ErrPrefixLengthInvalid          error = errors.New("in FieldElement (de)serializitation, an invalid prefix length > 8 was requested")
+	ErrPrefixLengthInvalid2         error = errors.New("in FieldElement (de)serialization, the requested prefix has bits in positions that are not allowed by prefix length")
+	ErrInvalidByteOrder             error = errors.New("unrecognized byte order in FieldElement (de)serialization. You must use either LittleEndian or BigEndian from the encoding/binary standard library")
+	ErrPrefixMismatch               error = errors.New("during deserialization, the read prefix did not match the expected one")
+	ErrNonNormalizedDeserialization error = errors.New("during FieldElement deserialization, the read number was not the minimal representative modulo BaseFieldSize")
+)
 
 func checkPrefixValidity(prefix PrefixBits, prefix_length uint8) error {
 	if prefix_length > maxprefixlength {

@@ -2,19 +2,19 @@ package bandersnatch
 
 import "testing"
 
-// This function checks whether the endomorphism factors through P=P+A and Endo and Endo_fullCurve agree
+// This function checks whether the endomorphism factors through P=P+A and Endo and Endo_FullCurve agree
 func make_checkfun_endo_sane(receiverType PointType) checkfunction {
 	return func(s TestSample) (bool, string) {
 		s.AssertNumberOfPoints(1)
 		var singular bool = s.AnyFlags().CheckFlag(Case_singular)
 		var infinite bool = s.AnyFlags().CheckFlag(Case_infinite)
-		var result1 = MakeCurvePointFromType(receiverType)
-		var result2 = MakeCurvePointFromType(receiverType)
-		result1.Endo_fullCurve(s.Points[0])
+		var result1 = MakeCurvePointPtrInterfaceFromType(receiverType)
+		var result2 = MakeCurvePointPtrInterfaceFromType(receiverType)
+		result1.Endo_FullCurve(s.Points[0])
 
 		if singular {
 			if !result1.IsNaP() {
-				return false, "Endo_fullCurve(NaP) did not result in NaP"
+				return false, "Endo_FullCurve(NaP) did not result in NaP"
 			}
 			result2.Endo(s.Points[0])
 			if !result2.IsNaP() {
@@ -25,7 +25,7 @@ func make_checkfun_endo_sane(receiverType PointType) checkfunction {
 		}
 
 		if result1.IsNaP() {
-			return false, "Endo_fullCurve(P) resulted in NaP for non-NaP P"
+			return false, "Endo_FullCurve(P) resulted in NaP for non-NaP P"
 		}
 
 		var result_xtw Point_xtw = result1.ExtendedTwistedEdwards()
@@ -38,25 +38,25 @@ func make_checkfun_endo_sane(receiverType PointType) checkfunction {
 
 		if !infinite { // Endo may not work on points at infinity
 			result2.Endo(s.Points[0])
-			if !result1.IsEqual_exact(result2) {
+			if !result1.IsEqual_FullCurve(result2) {
 				return false, "Endo(P) and Endo_exact(P) differ"
 			}
 		} else {
 			// input was point at infinity. Output should be affine order-2 point
-			if !result1.IsEqual_exact(&orderTwoPoint_xtw) {
-				return false, "Endo_fullCurve(infinite point) != affine order-2 point"
+			if !result1.IsEqual_FullCurve(&orderTwoPoint_xtw) {
+				return false, "Endo_FullCurve(infinite point) != affine order-2 point"
 			}
 		}
 
-		if s.Points[0].IsNeutralElement() != result1.IsNeutralElement_exact() {
-			return false, "Endo_fullCurve act as expected wrt neutral elements"
+		if s.Points[0].IsNeutralElement() != result1.IsNeutralElement_FullCurve() {
+			return false, "Endo_FullCurve act as expected wrt neutral elements"
 		}
 		if !infinite { // On infinite points, AddEq(&orderTwoPoint) might not work
-			var point_copy = s.Points[0].Clone().(CurvePoint)
+			var point_copy = s.Points[0].Clone().(CurvePointPtrInterface_FullCurve)
 			point_copy.AddEq(&orderTwoPoint_xtw)
-			result2.Endo_fullCurve(point_copy)
-			if !result1.IsEqual_exact(result2) {
-				return false, "Endo_fullCurve(P) != Endo_fullCurve(P+A)"
+			result2.Endo_FullCurve(point_copy)
+			if !result1.IsEqual_FullCurve(result2) {
+				return false, "Endo_FullCurve(P) != Endo_FullCurve(P+A)"
 			}
 		}
 		return true, ""
@@ -74,23 +74,23 @@ func make_checkfun_endo_homomorphic(receiverType PointType) (returned_function c
 		if s.AnyFlags().CheckFlag(Case_differenceInfinite) {
 			return true, "" // need to skip test, because computing P+Q will fail.
 		}
-		endo1 := MakeCurvePointFromType(receiverType)
-		endo2 := MakeCurvePointFromType(receiverType)
-		sum := MakeCurvePointFromType(receiverType)
-		result1 := MakeCurvePointFromType(receiverType)
-		result2 := MakeCurvePointFromType(receiverType)
-		endo1.Endo_fullCurve(s.Points[0])
-		endo2.Endo_fullCurve(s.Points[1])
+		endo1 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		endo2 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		sum := MakeCurvePointPtrInterfaceFromType(receiverType)
+		result1 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		result2 := MakeCurvePointPtrInterfaceFromType(receiverType)
+		endo1.Endo_FullCurve(s.Points[0])
+		endo2.Endo_FullCurve(s.Points[1])
 		sum.Add(s.Points[0], s.Points[1])
 		result1.Add(endo1, endo2)
-		result2.Endo_fullCurve(sum)
+		result2.Endo_FullCurve(sum)
 		if result1.IsNaP() {
 			return false, "Endo(P) + Endo(Q) resulted in NaP" // cannot trigger exceptional cases of addition, because the range of Endo is the good subgroup (verified by endo_sane).
 		}
 		if result2.IsNaP() {
 			return false, "Endo(P+Q) resulted in unexpected NaP"
 		}
-		if !result1.IsEqual_exact(result2) {
+		if !result1.IsEqual_FullCurve(result2) {
 			return false, "Endo(P+Q) != Endo(P) + Endo(Q)"
 		}
 		return true, ""
@@ -105,10 +105,10 @@ func checkfun_endo_action(s TestSample) (bool, string) {
 	var p253 bool = !(s.AnyFlags().CheckFlag(Case_outside_goodgroup) || s.AnyFlags().CheckFlag(Case_outside_p253) || s.AnyFlags().CheckFlag(Case_infinite))
 	var good_subgroup = !(s.AnyFlags().CheckFlag(Case_outside_goodgroup) || s.AnyFlags().CheckFlag(Case_infinite))
 	pointType := GetPointType(s.Points[0])
-	result1 := MakeCurvePointFromType(pointType)
-	result1.Endo_fullCurve(s.Points[0])
+	result1 := MakeCurvePointPtrInterfaceFromType(pointType)
+	result1.Endo_FullCurve(s.Points[0])
 	if result1.IsNaP() != singular {
-		return false, "Running Endo_fullCurve resulted in different NaP-status than the argument"
+		return false, "Running Endo_FullCurve resulted in different NaP-status than the argument"
 	}
 	if singular {
 		// skip further tests. The relevant properties are verified by endo_sane
@@ -122,13 +122,13 @@ func checkfun_endo_action(s TestSample) (bool, string) {
 	// Furthermore, we have Endo(A) = N, Endo(infinity) = A and Endo is homomorphic.
 
 	if p253 {
-		if !result1.IsEqual_exact(&result2) {
-			return false, "Running Endo_fullCurve did not (exactly) match exponentiation operation"
+		if !result1.IsEqual_FullCurve(&result2) {
+			return false, "Running Endo_FullCurve did not (exactly) match exponentiation operation"
 		}
 	} else if good_subgroup {
 		// Outside p253, but still in the good subgroup, we still have Endo(P) = Eigenvalue*P + A (in fact, this can be used to distinguish p253 from G')
 		if !result1.IsEqual(&result2) {
-			return false, "Running Endo_fullCurve did not match exponentiation operation"
+			return false, "Running Endo_FullCurve did not match exponentiation operation"
 		}
 	} else {
 		result1.DoubleEq()
@@ -139,8 +139,8 @@ func checkfun_endo_action(s TestSample) (bool, string) {
 			}
 			return true, "" // Skip in this borderline case. This can only happen if exp_naive failed, which should only
 		}
-		if !result1.IsEqual_exact(&result2) {
-			return false, "Running Endo_fullCurve did not match exponentiation up to 2-torsion"
+		if !result1.IsEqual_FullCurve(&result2) {
+			return false, "Running Endo_FullCurve did not match exponentiation up to 2-torsion"
 		}
 	}
 	return true, ""
