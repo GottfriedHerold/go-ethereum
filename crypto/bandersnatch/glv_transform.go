@@ -162,3 +162,48 @@ func GLV_representation(t *big.Int) (u_final *big.Int, v_final *big.Int) {
 	}
 	return
 }
+
+type decompositionCoefficient struct {
+	position uint
+	coeff    uint
+	sign     int
+}
+
+// decomposeUnalignedSignedAdic_Int(input, maxbits) outputs a list of exponents e_i and coeffs c_i of the same length s.t.
+// a) input = \sum_i c_i * 2^{e_i} for the original value of input
+// b) the e_i are ascending (this might change)
+// c) All c_i are odd with |c_i| having at most maxbits bits. Note that both input and the c_i carry signs.
+// The function is allowed to write to input. If the caller needs to re-use input, make a copy first.
+func decomposeUnlaginedSignedAdic_Int(input *big.Int, maxbits int) (decomposition []decompositionCoefficient) {
+	var globalSign int = input.Sign() // big.Int internally stores sign bit + Abs(input). We only read the latter, so we need to correct the sign. globalSign is in {-1,0,+1}
+	inputBitLen := input.BitLen()     // bitlength of Abs(input)
+	// 1 + inputBitLen / maxbits is a reasonable estimate for the capacity (it is in fact a upper bound, but just need an estimate)
+	decomposition = make([]decompositionCoefficient, 0, 1+inputBitLen/maxbits)
+	// exponents = make([]uint, 0, 1+inputBitLen/maxbits)
+	// coeffs = make([]int, 0, 1+inputBitLen/maxbits)
+	var carry uint // bool? uint?
+	// Scan input bits from lsb to msb
+	for i := 0; i < inputBitLen; i++ {
+		if input.Bit(i) == carry {
+			continue
+		}
+		v := getBitRange(input, i, i+maxbits)
+		v += carry
+		if v%2 == 0 {
+			panic("Cannot happen")
+		}
+
+	}
+	return
+}
+
+// getBitRange(x, low, high) interprets Abs(x) as a slice of bits in low-endian order and retuns the value of x[low:high], interpreted as a (usual) int.
+// We only require this to be correct if low <= high and high - low <= 8, say (not sure what bound we need)
+func getBitRange(input *big.Int, lowend int, highend int) uint {
+	// naive implementation:
+	var result uint = 0
+	for shift := 0; shift < highend-lowend; shift++ {
+		result += input.Bit(shift+lowend) << shift
+	}
+	return result
+}
