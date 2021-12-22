@@ -105,7 +105,47 @@ func TestGLV(t *testing.T) {
 		if norm2.CmpAbs(norm1) < 0 {
 			t.Fatal("GLV_representation does not output smallest element (-b_1-b_2)")
 		}
+	}
+}
 
+func test_decomposition_correctness(x *big.Int, decomposition []decompositionCoefficient) bool {
+	var accumulator *big.Int = big.NewInt(0)
+	var toAdd *big.Int = big.NewInt(0)
+	for _, comp := range decomposition {
+		toAdd.SetUint64(uint64(comp.coeff))
+		toAdd.Lsh(toAdd, comp.position)
+		if comp.sign == 1 {
+			accumulator.Add(accumulator, toAdd)
+		} else if comp.sign == -1 {
+			accumulator.Sub(accumulator, toAdd)
+		} else {
+			panic("decompositionCoefficient::sign not +/- 1")
+		}
+	}
+	if accumulator.Cmp(x) == 0 {
+		return true
+	}
+	return false
+}
+
+func TestDecomposition(t *testing.T) {
+	const iterations = 10000
+	var drng *rand.Rand = rand.New(rand.NewSource(141152))
+	var bigrange *big.Int = big.NewInt(0)
+	bigrange.Set(CurveOrder_Int)
+	var smallrange *big.Int = big.NewInt(1024)
+	_ = smallrange
+	_ = bigrange
+	for i := 0; i < iterations; i++ {
+		var x *big.Int = big.NewInt(0)
+		x.Rand(drng, bigrange)
+		decomp := decomposeUnalignedSignedAdic_Int(x, 5)
+		// fmt.Println(i)
+		// fmt.Println(decomp)
+		// fmt.Printf("%b\n", x)
+		if !test_decomposition_correctness(x, decomp) {
+			t.Fatal("Signed Decomposition algorithm for sliding window does not work")
+		}
 	}
 
 }

@@ -174,7 +174,7 @@ type decompositionCoefficient struct {
 // b) the e_i are ascending (this might change)
 // c) All c_i are odd with |c_i| having at most maxbits bits. Note that both input and the c_i carry signs.
 // The function is allowed to write to input. If the caller needs to re-use input, make a copy first.
-func decomposeUnlaginedSignedAdic_Int(input *big.Int, maxbits int) (decomposition []decompositionCoefficient) {
+func decomposeUnalignedSignedAdic_Int(input *big.Int, maxbits int) (decomposition []decompositionCoefficient) {
 	var globalSign int = input.Sign() // big.Int internally stores sign bit + Abs(input). We only read the latter, so we need to correct the sign. globalSign is in {-1,0,+1}
 	inputBitLen := input.BitLen()     // bitlength of Abs(input)
 	// 1 + inputBitLen / maxbits is a reasonable estimate for the capacity (it is in fact a upper bound, but just need an estimate)
@@ -183,8 +183,10 @@ func decomposeUnlaginedSignedAdic_Int(input *big.Int, maxbits int) (decompositio
 	// coeffs = make([]int, 0, 1+inputBitLen/maxbits)
 	var carry uint // bool? uint?
 	// Scan input bits from lsb to msb
-	for i := 0; i < inputBitLen; i++ {
+	var i int
+	for i = 0; i < inputBitLen; { // increment of i done inside loop, as the stride is variable
 		if input.Bit(i) == carry {
+			i++
 			continue
 		}
 		v := getBitRange(input, i, i+maxbits)
@@ -192,7 +194,17 @@ func decomposeUnlaginedSignedAdic_Int(input *big.Int, maxbits int) (decompositio
 		if v%2 == 0 {
 			panic("Cannot happen")
 		}
-
+		carry = input.Bit(i + maxbits)
+		if carry == 1 {
+			// change v to v - (2 << maxbits).
+			decomposition = append(decomposition, decompositionCoefficient{position: uint(i), coeff: (1 << maxbits) - v, sign: -globalSign})
+		} else {
+			decomposition = append(decomposition, decompositionCoefficient{position: uint(i), coeff: v, sign: globalSign})
+		}
+		i += maxbits + 1 // Note: The +1 comes from the sign ambiguity
+	}
+	if carry == 1 {
+		decomposition = append(decomposition, decompositionCoefficient{position: uint(i), coeff: 1, sign: globalSign})
 	}
 	return
 }
